@@ -12,9 +12,11 @@ import { settleAdvancedModeDefault } from "./lib/interface-mode";
 import { BrowserSignInPage } from "./pair/BrowserSignInPage";
 import { PairPage } from "./pair/PairPage";
 import { HomeScreen, SignedOutAtHome } from "./components/HomeScreen";
+import { ensureSpeechBridge } from "./lib/speech-service";
 import "./styles.css";
 
 // Before first paint; settleAdvancedModeDefault must run before applySkin writes omb-skin.
+ensureSpeechBridge();
 settleAdvancedModeDefault();
 applySkin(readSkin());
 applyFont(readFont());

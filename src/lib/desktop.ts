@@ -1,3 +1,5 @@
+import { ensureSpeechBridge, speechService } from "@/lib/speech-service";
+
 const browserCapabilities: DesktopCapabilities = {
   host: {
     platform: "other",
@@ -30,15 +32,26 @@ let cached: DesktopCapabilities | null = null;
 let cacheRevision = 0;
 
 export function initialDesktopCapabilities(): DesktopCapabilities {
+  ensureSpeechBridge();
+  const speechAvailable = speechService.isAvailable();
+  const webSpeech = speechService.isWebSpeechSupported();
   const platform = typeof window === "undefined" ? undefined : window.ogb?.platform;
-  if (!platform) return browserCapabilities;
   const isMac = platform === "darwin";
+  const dictationAvailable = isMac || speechAvailable;
   const dictation: DesktopCapabilities["dictation"] = {
-    available: isMac,
-    engine: isMac ? "apple-speech" : "none",
-    onDevice: isMac,
+    available: dictationAvailable,
+    engine: isMac ? "apple-speech" : webSpeech ? "web-speech" : "none",
+    onDevice: isMac || webSpeech,
   };
-  if (!isMac) dictation.reasonCode = "unsupported-platform";
+  if (!dictationAvailable) {
+    dictation.reasonCode = platform ? "unsupported-platform" : "desktop-app-required";
+  }
+  if (!platform) {
+    return {
+      ...browserCapabilities,
+      dictation,
+    };
+  }
   return {
     ...browserCapabilities,
     host: {
