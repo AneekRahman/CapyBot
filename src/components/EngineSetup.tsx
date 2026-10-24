@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AlertTriangle, Check, Copy, Download, ExternalLink, KeyRound, Loader2, LogIn, TerminalSquare, X } from "lucide-react";
 import { api, type EngineInstall, type InstanceInfo, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
@@ -265,68 +265,27 @@ export function EngineWarningNotice({
   );
 }
 
+import { GoogleSignIn, GoogleSignInPaste } from "./GoogleSignIn";
+export { GoogleSignInPaste };
+
 function ManagedEngineSetup({ instance, signInOnly }: { instance: InstanceInfo; signInOnly: boolean }) {
-  const { refreshInstances, refreshModels } = useStore();
-  const [busy, setBusy] = useState<"install" | "signin" | "complete" | "check" | null>(null);
+  const { refreshInstances } = useStore();
+  const [busy, setBusy] = useState<"install" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [flow, setFlow] = useState<{ flowId: string; authorizationUrl: string } | null>(null);
-  const [callbackUrl, setCallbackUrl] = useState("");
-  // In a browser served from the workspace there is no shell integration: Google's
-  // redirect to 127.0.0.1 lands on the visitor's machine, so the paste-and-forward
-  // step is the completion path, not an "other computer" corner case.
-  const inWeb = !window.ogb?.openExternal;
   const managed = instance.install!.managed!;
 
-  useEffect(() => {
-    if (!flow || instance.snapshot.authenticated) return;
-    const timer = window.setInterval(() => void refreshInstances(), 2_000);
-    return () => window.clearInterval(timer);
-  }, [flow, instance.snapshot.authenticated, refreshInstances]);
-
-  const run = async (kind: NonNullable<typeof busy>, action: () => Promise<void>) => {
-    setBusy(kind);
+  const install = async () => {
+    setBusy("install");
     setError(null);
-    try { await action(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
-    finally { setBusy(null); }
-  };
-
-  const install = () => run("install", async () => {
     try {
       await api(`/api/instances/${encodeURIComponent(instance.instanceId)}/install`, { method: "POST" });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
+      setBusy(null);
       await refreshInstances().catch(() => {});
     }
-  });
-
-  const signIn = () => run("signin", async () => {
-    const { auth } = await api(`/api/instances/${encodeURIComponent(instance.instanceId)}/auth/start`, { method: "POST" });
-    if (auth.phase === "succeeded") {
-      await refreshInstances();
-      await refreshModels(instance.instanceId);
-      return;
-    }
-    if (!auth.flowId || !auth.authorizationUrl) throw new Error(t("engineSetup.googleNoLink"));
-    setFlow({ flowId: auth.flowId, authorizationUrl: auth.authorizationUrl });
-    if (window.ogb?.openExternal) await window.ogb.openExternal(auth.authorizationUrl);
-    else window.open(auth.authorizationUrl, "_blank", "noopener,noreferrer");
-  });
-
-  const complete = () => run("complete", async () => {
-    if (!flow) return;
-    await api(`/api/instances/${encodeURIComponent(instance.instanceId)}/auth/complete`, {
-      method: "POST",
-      body: JSON.stringify({ flowId: flow.flowId, callbackUrl }),
-    });
-    setCallbackUrl("");
-    await refreshInstances();
-    await refreshModels(instance.instanceId);
-  });
-
-  const check = () => run("check", async () => {
-    await refreshInstances();
-    await refreshModels(instance.instanceId);
-  });
+  };
 
   if (!signInOnly) {
     return (
@@ -348,89 +307,7 @@ function ManagedEngineSetup({ instance, signInOnly }: { instance: InstanceInfo; 
     );
   }
 
-  return (
-    <div className="mt-3 space-y-2">
-      <button
-        type="button"
-        disabled={busy !== null}
-        onClick={() => void signIn()}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
-      >
-        {busy === "signin" ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
-        {busy === "signin"
-          ? t("engineSetup.startingGoogle")
-          : flow
-            ? t("engineSetup.openGoogleAgain")
-            : t("engineSetup.signInGoogle")}
-      </button>
-      {busy === "signin" && <p role="status" className="text-[11.5px] text-ink-secondary">{t("engineSetup.antigravitySlow")}</p>}
-      {flow && (
-        <>
-          <button type="button" onClick={() => void check()} className="w-full rounded-lg bg-control px-3 py-2 text-[12px] font-semibold text-ink hover:bg-raised-hover">
-            {busy === "check" ? t("common.checking") : t("engineSetup.finishedSignIn")}
-          </button>
-          <GoogleSignInPaste
-            inWeb={inWeb}
-            callbackUrl={callbackUrl}
-            setCallbackUrl={setCallbackUrl}
-            onSend={() => void complete()}
-            busy={busy}
-          />
-        </>
-      )}
-      {error && <p className="text-[11.5px] text-danger">{error}</p>}
-    </div>
-  );
-}
-
-type EngineSetupBusy = "install" | "signin" | "complete" | "check";
-
-/** In the web app this is the normal way sign-in completes: Google's redirect
- * goes to a 127.0.0.1 address on the visitor's machine, which cannot load, and
- * the workspace receives the code by having the person paste that address.
- * In the desktop app the redirect usually completes by itself and the same
- * controls remain available behind the "other computer" fallback. */
-export function GoogleSignInPaste({ inWeb, callbackUrl, setCallbackUrl, onSend, busy }: {
-  inWeb: boolean;
-  callbackUrl: string;
-  setCallbackUrl: (value: string) => void;
-  onSend: () => void;
-  busy: EngineSetupBusy | null;
-}) {
-  const fields = (
-    <>
-      <input
-        value={callbackUrl}
-        onChange={(event) => setCallbackUrl(event.target.value)}
-        placeholder="http://127.0.0.1:…/?code=…"
-        className="mt-2 w-full rounded-md border border-hairline bg-inset px-2 py-1.5 text-[11px] text-ink outline-none focus:border-accent"
-      />
-      <button
-        type="button"
-        disabled={!callbackUrl.trim() || busy !== null}
-        onClick={onSend}
-        className="mt-2 w-full rounded-md bg-control px-2 py-1.5 font-medium text-ink disabled:opacity-50"
-      >
-        {busy === "complete" ? t("engineSetup.sending") : t("engineSetup.sendRedirect")}
-      </button>
-    </>
-  );
-  if (!inWeb) {
-    return (
-      <details className="rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
-        <summary className="cursor-pointer select-none">{t("engineSetup.otherComputer")}</summary>
-        <p className="mt-2 leading-relaxed">{t("engineSetup.otherComputerHint")}</p>
-        {fields}
-      </details>
-    );
-  }
-  return (
-    <div data-engine-signin-paste className="rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
-      <p className="leading-relaxed">{t("engineSetup.googleRedirectExpected")}</p>
-      <p className="mt-1.5 leading-relaxed">{t("engineSetup.googleRedirectPaste")}</p>
-      {fields}
-    </div>
-  );
+  return <GoogleSignIn instanceId={instance.instanceId} />;
 }
 
 export function isApiKeyEngine(instance: InstanceInfo | undefined): boolean {

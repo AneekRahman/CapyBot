@@ -287,3 +287,31 @@ describe("the way into local models", () => {
     await expect(probeLocalModels("claude", () => Promise.reject(new Error("offline")))).resolves.toBeUndefined();
   });
 });
+
+describe("removing unauthenticated added accounts", () => {
+  it("offers account removal directly from the blocked view for an unauthenticated added Antigravity account", () => {
+    const antigravityPrimary: InstanceInfo = {
+      instanceId: "antigravity",
+      driverKind: "antigravityAgent",
+      displayName: "Google Gemini (Antigravity)",
+      access: "subscription",
+      snapshot: { state: "available", version: "1.0.0", authenticated: true },
+      models: { default: "gemini-2.5-pro", options: [{ id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }] },
+    };
+    const antigravityAdded: InstanceInfo = {
+      instanceId: "antigravity-9999",
+      driverKind: "antigravityAgent",
+      displayName: "secondary@example.test",
+      access: "subscription",
+      snapshot: { state: "available", version: "1.0.0", authenticated: false },
+      models: { default: "gemini-2.5-pro", options: [{ id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }] },
+    };
+    fixture.instances = [antigravityPrimary, antigravityAdded];
+    const onAdded = bot("antigravity-9999", "gemini-2.5-pro");
+    const opened = open(onAdded);
+    const removeBtn = opened.nodes.find((node) => node.props["data-remove-unauthenticated-account"]);
+    expect(removeBtn).toBeDefined();
+    expect(opened.html).toContain("data-remove-unauthenticated-account");
+    expect(opened.html).toContain("Manage AI accounts");
+  });
+});

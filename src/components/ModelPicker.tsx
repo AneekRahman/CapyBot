@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, KeyRound, Loader2, Plus, RefreshCw, Search, X } from "lucide-react";
-import { useStore, currentTaskBot, type Bot, type InstanceInfo, type ModelSelection } from "@/state/store";
+import { api, useStore, currentTaskBot, type Bot, type InstanceInfo, type ModelSelection } from "@/state/store";
+import type { LocaleKey } from "@/locales";
 import type { EffortLevel } from "../../shared/wire";
 import type { ModelVariantOption } from "../../shared/runtime-events";
 import { filterCustomModels, partitionCustomModels, suggestedModels } from "@/lib/custom-models";
@@ -25,6 +26,11 @@ import { Select } from "./Select";
 
 type ModelOption = InstanceInfo["models"]["options"][number];
 const COMPACT_MODEL_COUNT = 5;
+const COPY_REMOVE: Record<SignInFamily, LocaleKey> = {
+  claude: "accounts.removeBodyClaude",
+  openai: "accounts.removeBodyChatgpt",
+  antigravity: "accounts.removeBodyAntigravity",
+};
 
 function modelLabel(instance: InstanceInfo | undefined, model: string): string {
   return instance?.models.options.find((option) => option.id === model)?.label ?? model;
@@ -339,13 +345,14 @@ export type RailProvider = {
 };
 
 export function railProviders(instances: InstanceInfo[], selectedInstance: InstanceInfo | undefined,
-  claudeInstance: InstanceInfo | undefined, openaiInstance: InstanceInfo | undefined) {
+  claudeInstance: InstanceInfo | undefined, openaiInstance: InstanceInfo | undefined, antigravityInstance?: InstanceInfo | undefined) {
   const firstOf: Record<SignInFamily, InstanceInfo | undefined> = {
     claude: instances.find((instance) => isClaudeAccount(instance) && instance.claudeAccount?.isDefault)
       ?? instances.find(isClaudeAccount),
     openai: instances.find((instance) => signInFamily(instance) === "openai"),
+    antigravity: instances.find((instance) => signInFamily(instance) === "antigravity"),
   };
-  const opensOn: Record<SignInFamily, InstanceInfo | undefined> = { claude: claudeInstance, openai: openaiInstance };
+  const opensOn: Record<SignInFamily, InstanceInfo | undefined> = { claude: claudeInstance, openai: openaiInstance, antigravity: antigravityInstance };
   const providers = instances.filter((instance) => {
     const family = signInFamily(instance);
     return !family || instance === firstOf[family];
@@ -367,15 +374,16 @@ function apiKeysLabel(instances: InstanceInfo[]): string {
   return t(instances.some(hasSavedApiKey) ? "model.addOrChangeApiKeys" : "model.addApiKeys");
 }
 
-export function ModelEngineRail({ instances, selectedInstance, claudeInstance, openaiInstance, onSelect, onAddApiKeys }: {
+export function ModelEngineRail({ instances, selectedInstance, claudeInstance, openaiInstance, antigravityInstance, onSelect, onAddApiKeys }: {
   instances: InstanceInfo[];
   selectedInstance?: InstanceInfo;
   claudeInstance?: InstanceInfo;
   openaiInstance?: InstanceInfo;
+  antigravityInstance?: InstanceInfo;
   onSelect: (instance: InstanceInfo) => void;
   onAddApiKeys?: () => void;
 }) {
-  const { subscription, api, custom: local } = railProviders(instances, selectedInstance, claudeInstance, openaiInstance);
+  const { subscription, api, custom: local } = railProviders(instances, selectedInstance, claudeInstance, openaiInstance, antigravityInstance);
   const railButton = ({ instance, target, selected, label }: RailProvider) => {
     const attention = needsCli(target) || needsSignIn(target) || Boolean(target.snapshot.update);
     const managedBy = target.policy ? t("policy.managedBy", { organization: target.policy.organizationName }) : undefined;
@@ -483,9 +491,12 @@ export function ModelPicker({
   const rootRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<{ left: number; maxHeight: number }>();
   const [changedBotModel, setChangedBotModel] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<InstanceInfo | null>(null);
+  const [removingAccount, setRemovingAccount] = useState(false);
   const refreshingRef = useRef(false);
   const lastClaudeIdRef = useRef<string | null>(null);
   const lastOpenaiIdRef = useRef<string | null>(null);
+  const lastAntigravityIdRef = useRef<string | null>(null);
 
   const simpleView = !advanced && !fullView;
   const popoverWidth = simpleView ? SIMPLE_POPOVER_WIDTH : POPOVER_WIDTH;
@@ -512,10 +523,18 @@ export function ModelPicker({
   );
   const claudeAccounts = pickerInstances.filter(isClaudeAccount);
   const openaiAccounts = pickerInstances.filter((instance) => signInFamily(instance) === "openai");
+  const antigravityAccounts = pickerInstances.filter((instance) => signInFamily(instance) === "antigravity");
   const openaiRailInstance = openaiAccounts.find((instance) => instance.instanceId === lastOpenaiIdRef.current)
     ?? openaiAccounts.find((instance) => instance.instanceId === selection.instanceId) ?? openaiAccounts[0];
+  const antigravityRailInstance = antigravityAccounts.find((instance) => instance.instanceId === lastAntigravityIdRef.current)
+    ?? antigravityAccounts.find((instance) => instance.instanceId === selection.instanceId) ?? antigravityAccounts[0];
   const multipleClaudeAccounts = state.instances.filter(isClaudeAccount).length > 1;
-  const showActiveAccount = (multipleClaudeAccounts && isClaudeAccount(active)) || Boolean(active?.snapshot.chatgptPlan);
+  const multipleOpenaiAccounts = state.instances.filter((instance) => signInFamily(instance) === "openai").length > 1;
+  const multipleAntigravityAccounts = state.instances.filter((instance) => signInFamily(instance) === "antigravity").length > 1;
+  const showActiveAccount = (multipleClaudeAccounts && isClaudeAccount(active))
+    || (multipleOpenaiAccounts && signInFamily(active) === "openai")
+    || (multipleAntigravityAccounts && signInFamily(active) === "antigravity")
+    || Boolean(active?.snapshot.chatgptPlan);
   const claudeRailInstance = claudeAccounts.find((instance) => instance.instanceId === lastClaudeIdRef.current)
     ?? claudeAccounts.find((instance) => instance.instanceId === selection.instanceId) ?? claudeAccounts[0];
   const railInstance =
@@ -626,10 +645,51 @@ export function ModelPicker({
   const selectRail = (instance: InstanceInfo) => {
     if (isClaudeAccount(instance)) lastClaudeIdRef.current = instance.instanceId;
     if (signInFamily(instance) === "openai") lastOpenaiIdRef.current = instance.instanceId;
+    if (signInFamily(instance) === "antigravity") lastAntigravityIdRef.current = instance.instanceId;
     setRailId(instance.instanceId);
     const official = instance.models.options.filter((option) => !option.custom);
     setPane(isCustomOnly(instance) || (official.length === 0 && !instance.snapshot.chatgptPlan) ? "custom" : "main");
     resetList();
+  };
+
+  const canRemoveRailInstance = Boolean(
+    railInstance &&
+    (railInstance.instanceId.startsWith("antigravity-") ||
+      railInstance.instanceId.startsWith("chatgpt-") ||
+      (isClaudeAccount(railInstance) && railInstance.instanceId !== "claude" && railInstance.claudeAccount?.isDefault !== true))
+  );
+
+  const removeAccount = async (target: InstanceInfo) => {
+    setConfirmRemove(null);
+    setRemovingAccount(true);
+    try {
+      const family = signInFamily(target);
+      const accountsInFamily = family === "claude" ? claudeAccounts : family === "openai" ? openaiAccounts : family === "antigravity" ? antigravityAccounts : [];
+      const fallback = accountsInFamily.find((a) => a.instanceId !== target.instanceId && a.snapshot.authenticated)
+        ?? accountsInFamily.find((a) => a.instanceId !== target.instanceId)
+        ?? pickerInstances.find((a) => a.instanceId !== target.instanceId);
+      if (fallback) {
+        const usingBots = state.bots.filter((b) => b.modelSelection.instanceId === target.instanceId);
+        const nextModel = fallback.models.default || fallback.models.options[0]?.id || "default";
+        for (const b of usingBots) {
+          await api(`/api/bots/${encodeURIComponent(b.id)}/model`, {
+            method: "PATCH",
+            body: JSON.stringify({ instanceId: fallback.instanceId, model: nextModel }),
+          }).catch(() => {});
+        }
+        if (usingBots.some((b) => b.id === bot.id)) {
+          dispatch({ type: "setModel", botId: bot.id, threadId, selection: { instanceId: fallback.instanceId, model: nextModel } });
+        }
+      }
+      const { instances } = await api(`/api/instances/${encodeURIComponent(target.instanceId)}`, { method: "DELETE" });
+      if (fallback) selectRail(fallback);
+      if (Array.isArray(instances)) dispatch({ type: "instances", instances });
+      else await refreshInstances().catch(() => {});
+    } catch {
+      await refreshInstances().catch(() => {});
+    } finally {
+      setRemovingAccount(false);
+    }
   };
 
   const profile = state.bots.find((candidate) => candidate.id === bot.id) ?? bot;
@@ -710,11 +770,13 @@ export function ModelPicker({
       ?? accounts[0];
   const simpleProviders = (() => {
     const groups = railProviders(pickerInstances, railInstance,
-      simpleOpensOn(claudeAccounts, lastClaudeIdRef.current), simpleOpensOn(openaiAccounts, lastOpenaiIdRef.current));
+      simpleOpensOn(claudeAccounts, lastClaudeIdRef.current),
+      simpleOpensOn(openaiAccounts, lastOpenaiIdRef.current),
+      simpleOpensOn(antigravityAccounts, lastAntigravityIdRef.current));
     return [...groups.subscription, ...groups.api, ...groups.custom];
   })();
   const simpleFamily = signInFamily(railInstance);
-  const simpleAccounts = simpleFamily === "claude" ? claudeAccounts : simpleFamily === "openai" ? openaiAccounts : [];
+  const simpleAccounts = simpleFamily === "claude" ? claudeAccounts : simpleFamily === "openai" ? openaiAccounts : simpleFamily === "antigravity" ? antigravityAccounts : [];
   const simpleLabel = simpleProviders.find((provider) => provider.selected)?.label ?? railInstance?.displayName ?? "";
   const simpleSignIn = !customOnly && needsSignIn(railInstance);
   const simpleOfficial = customOnly || simpleSignIn ? [] : official;
@@ -771,6 +833,7 @@ export function ModelPicker({
         if (bot.busy) return;
         if (active && isClaudeAccount(active)) lastClaudeIdRef.current = active.instanceId;
         if (active && signInFamily(active) === "openai") lastOpenaiIdRef.current = active.instanceId;
+        if (active && signInFamily(active) === "antigravity") lastAntigravityIdRef.current = active.instanceId;
         const initial = pickerInstances.find((instance) => instance.instanceId === selection.instanceId) ?? pickerInstances[0];
         setRailId(initial?.instanceId ?? null);
         setChangedBotModel(false);
@@ -868,6 +931,7 @@ export function ModelPicker({
                 if (simpleSignIn && hasOfficialModels) setPane("main");
                 setFullView(true);
               }}
+              onRemove={canRemoveRailInstance && railInstance ? () => setConfirmRemove(railInstance) : null}
               models={simpleModels}
               repeatedLabels={repeatedModelLabels(simpleAll)}
               query={simpleQuery}
@@ -908,7 +972,7 @@ export function ModelPicker({
             />
           ) : (
           <>
-          {pickerInstances.length > 0 && <ModelEngineRail instances={pickerInstances} selectedInstance={railInstance} claudeInstance={claudeRailInstance} openaiInstance={openaiRailInstance} onSelect={selectRail}
+          {pickerInstances.length > 0 && <ModelEngineRail instances={pickerInstances} selectedInstance={railInstance} claudeInstance={claudeRailInstance} openaiInstance={openaiRailInstance} antigravityInstance={antigravityRailInstance} onSelect={selectRail}
             onAddApiKeys={window.ogb?.remoteClient?.active === true ? undefined : openApiKeys} />}
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
@@ -968,6 +1032,9 @@ export function ModelPicker({
                   {signInFamily(railInstance) === "openai" && openaiAccounts.length > 1 && (
                     <ClaudeAccountSelect accounts={openaiAccounts} selectedId={railInstance.instanceId} onSelect={selectRail} />
                   )}
+                  {signInFamily(railInstance) === "antigravity" && antigravityAccounts.length > 1 && (
+                    <ClaudeAccountSelect accounts={antigravityAccounts} selectedId={railInstance.instanceId} onSelect={selectRail} />
+                  )}
                   {railInstance.snapshot.authenticated && railInstance.snapshot.account && (
                     <p className="mt-1 truncate text-[11px] text-ink-secondary" title={[railInstance.snapshot.account.email, railInstance.snapshot.account.organization].filter(Boolean).join(" · ")}>
                       {[railInstance.snapshot.account.email, railInstance.snapshot.account.organization].filter(Boolean).join(" · ")}
@@ -1015,6 +1082,29 @@ export function ModelPicker({
                           : t("model.afterSetupMany", { count: official.length })
                         : t("model.localSoon")}
                     </p>
+                    {canRemoveRailInstance && (
+                      <div className="mt-3 flex items-center justify-between border-t border-hairline/40 pt-2 text-[12px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpen(false);
+                            dispatch({ type: "toggleAppSettings", open: true, section: "engines" });
+                          }}
+                          className="text-ink-secondary hover:text-ink"
+                        >
+                          {t("model.simple.manage")}
+                        </button>
+                        <button
+                          type="button"
+                          data-remove-unauthenticated-account
+                          disabled={removingAccount}
+                          onClick={() => setConfirmRemove(railInstance)}
+                          className="font-medium text-danger hover:underline disabled:opacity-50"
+                        >
+                          {t("accounts.remove")}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -1198,6 +1288,15 @@ export function ModelPicker({
           if (pendingSwitch.updateBotDefault && threadId) setChangedBotModel(true);
           setPendingSwitch(null);
         }}
+      />
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        title={t("accounts.removeTitle", { name: confirmRemove?.displayName ?? "" })}
+        body={confirmRemove && signInFamily(confirmRemove) ? t(COPY_REMOVE[signInFamily(confirmRemove)!]) : t("accounts.removeBodyClaude")}
+        tone="neutral"
+        confirmLabel={t("accounts.remove")}
+        onCancel={() => setConfirmRemove(null)}
+        onConfirm={() => confirmRemove && void removeAccount(confirmRemove)}
       />
     </div>
   );

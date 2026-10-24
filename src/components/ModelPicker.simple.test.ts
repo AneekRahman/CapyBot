@@ -652,6 +652,34 @@ describe("the model picker in Simple mode", () => {
     }));
   });
 
+  it("reaches multiple Antigravity accounts from the one Google Gemini row, and offers removal for unauthenticated added ones", () => {
+    const antigravityPrimary: InstanceInfo = {
+      ...engine("antigravity", "antigravityAgent", "Google Gemini (Antigravity)", "subscription", [{ id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }]),
+      snapshot: { state: "available", version: "1.0.0", authenticated: true },
+    };
+    const antigravityAdded: InstanceInfo = {
+      ...engine("antigravity-added", "antigravityAgent", "secondary@example.test", "subscription", [{ id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" }]),
+      snapshot: { state: "available", version: "1.0.0", authenticated: false },
+    };
+    fixture.instances = [claude(), antigravityPrimary, antigravityAdded];
+    const forBot = bot();
+    const opened = open(forBot);
+    const google = pane(opened)!.props.providers.filter((p) => p.label === "Google Gemini (Antigravity)");
+    expect(google).toHaveLength(1);
+    pane(opened)!.props.onProvider(google[0].target);
+    const browsed = render(forBot);
+    const account = pane(browsed)!.props.account as ReactElement<ComponentProps<typeof ClaudeAccountSelect>>;
+    expect(account.props.accounts.map((i) => i.displayName)).toEqual(["Google Gemini (Antigravity)", "secondary@example.test"]);
+
+    account.props.onSelect(antigravityAdded);
+    const onAdded = render(forBot);
+    expect(pane(onAdded)!.props.needsSetup).toEqual({ name: "secondary@example.test" });
+    expect(pane(onAdded)!.props.onRemove).toBeTypeOf("function");
+    const insideNodes = inside(onAdded);
+    const removeBtn = insideNodes.find((n) => n.props["data-simple-remove"] !== undefined);
+    expect(removeBtn).toBeDefined();
+  });
+
   it("opens a sign-in family on an account that is ready, not on a signed-out first one", () => {
     const signedOutCodex: InstanceInfo = { ...codex, snapshot: { ...codex.snapshot, authenticated: false } };
     const plan: InstanceInfo = {

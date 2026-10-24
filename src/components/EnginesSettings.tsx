@@ -7,11 +7,10 @@ import { cn } from "@/lib/cn";
 import { useMenuMotion } from "./MenuMotion";
 import { t } from "@/lib/i18n";
 import { ApiKeyEngineManage, EngineSetup, EngineUpdateNotice, EngineWarningNotice, isApiKeyEngine } from "./EngineSetup";
-import { AccountsCard, AddAccount, accountGroupOf, accountsReady, type AccountGroup } from "./EngineAccounts";
+import { AccountsCard, accountGroupOf, accountsReady, type AccountGroup } from "./EngineAccounts";
 import { DEVICE_SIGN_IN_COPY, deviceSignInProvider } from "./DeviceSignIn";
 import { AntigravityFreeSpace } from "./AntigravityFreeSpace";
 import { CacheKeepWarmSettings } from "./CacheKeepWarmSettings";
-import { ConfirmDialog } from "./ConfirmDialog";
 import { Select } from "./Select";
 
 interface ProbeResult {
@@ -296,39 +295,6 @@ function EngineAdvanced({ instance }: { instance: InstanceInfo }) {
   );
 }
 
-function RemoveAntigravityAccount({ instance }: { instance: InstanceInfo }) {
-  const { state, dispatch, refreshInstances } = useStore();
-  const [confirming, setConfirming] = useState(false);
-  const [removing, setRemoving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const usedBy = state.bots.filter((bot) => bot.modelSelection.instanceId === instance.instanceId).length;
-  const remove = async () => {
-    setConfirming(false);
-    setRemoving(true);
-    setError(null);
-    try {
-      const { instances } = await api(`/api/instances/${encodeURIComponent(instance.instanceId)}`, { method: "DELETE" });
-      if (Array.isArray(instances)) dispatch({ type: "instances", instances });
-      else await refreshInstances();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setRemoving(false);
-    }
-  };
-  return <>
-    <div className="flex flex-wrap items-center gap-2">
-      <button type="button" disabled={removing || usedBy > 0} onClick={() => setConfirming(true)} className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-danger hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50">
-        {removing ? <Loader2 size={13} className="animate-spin" /> : t("accounts.remove")}
-      </button>
-      {usedBy > 0 && <p className="text-[11px] text-ink-secondary">{t("accounts.inUse", { count: String(usedBy) })}</p>}
-    </div>
-    {error && <p role="alert" className="text-[12px] text-danger">{error}</p>}
-    <ConfirmDialog open={confirming} title={t("accounts.removeTitle", { name: instance.displayName })} body={t("accounts.removeBodyAntigravity")}
-      confirmLabel={t("accounts.remove")} tone="neutral" pending={removing} onCancel={() => { if (!removing) setConfirming(false); }} onConfirm={() => void remove()} />
-  </>;
-}
-
 function EngineRow({ instance }: { instance: InstanceInfo }) {
   const policyNote = instance.policy && <p className="mb-2 text-[12px] leading-relaxed text-ink-secondary">
     <span className="font-medium text-ink">{t("policy.managedBy", { organization: instance.policy.organizationName })}</span> · {instance.policy.reason}
@@ -358,13 +324,6 @@ function EngineRow({ instance }: { instance: InstanceInfo }) {
           )
       )}
       {instance.freeUpSpace && <AntigravityFreeSpace instance={instance} />}
-      {instance.driverKind === "antigravityAgent" && (
-        <div className="mt-3 space-y-3">
-          {instance.snapshot.authenticated && <p className="break-words text-[12px] text-ink-secondary">{instance.snapshot.account?.email ?? t("engineSetup.antigravity.emailUnavailable")}</p>}
-          <AddAccount label={t("engineSetup.antigravity.addAccount")} endpoint="/api/instances/antigravity-accounts" extra={{ sourceInstanceId: instance.instanceId }} onAdded={() => {}} />
-          {instance.instanceId.startsWith("antigravity-") && <RemoveAntigravityAccount instance={instance} />}
-        </div>
-      )}
       <EngineAdvanced instance={instance} />
     </EngineCard>
   );

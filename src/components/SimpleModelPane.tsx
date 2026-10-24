@@ -31,6 +31,7 @@ export function SimpleModelPane({
   needsSetup,
   signIn,
   onSetUp,
+  onRemove,
   models,
   repeatedLabels,
   query,
@@ -52,6 +53,7 @@ export function SimpleModelPane({
   needsSetup?: { name: string } | null;
   signIn?: { name: string } | null;
   onSetUp: () => void;
+  onRemove?: (() => void) | null;
   models: ModelOption[];
   repeatedLabels?: ReadonlySet<string>;
   query?: string;
@@ -128,9 +130,16 @@ export function SimpleModelPane({
             ) : needsSetup ? (
               <div className="flex flex-col items-start gap-3 px-2 py-1.5 text-[12.5px] text-ink-secondary">
                 <span>{t("model.simple.needsSetup", { name: needsSetup.name })}</span>
-                <button type="button" data-simple-set-up onClick={onSetUp} className="rounded-full bg-accent px-3 py-1.5 text-[12.5px] font-medium text-accent-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                  {t("model.simple.setUp")}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button type="button" data-simple-set-up onClick={onSetUp} className="rounded-full bg-accent px-3 py-1.5 text-[12.5px] font-medium text-accent-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                    {t("model.simple.setUp")}
+                  </button>
+                  {onRemove && (
+                    <button type="button" data-simple-remove onClick={onRemove} className="rounded-full px-2 py-1.5 text-[12.5px] font-medium text-danger hover:underline">
+                      {t("accounts.remove")}
+                    </button>
+                  )}
+                </div>
               </div>
             ) : models.length === 0 ? (
               query ? (

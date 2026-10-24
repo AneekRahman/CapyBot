@@ -7,16 +7,19 @@ import type { LocaleKey } from "@/locales";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ClaudeSignIn } from "./ClaudeSignIn";
 import { DeviceSignIn, deviceSignInProvider } from "./DeviceSignIn";
+import { GoogleSignIn } from "./GoogleSignIn";
+import { AntigravityFreeSpace } from "./AntigravityFreeSpace";
 import { ChatGptPlanStatus } from "./ChatGptPlanStatus";
 import { EngineCard, engineReady, providerName, type EngineCardSummary } from "./EngineLibrary";
 import { CommandRow, EngineSetup, EngineUpdateNotice, EngineWarningNotice } from "./EngineSetup";
 
 /** Providers whose accounts are listed together on one card, each signed in on its own. */
-export type AccountGroup = "claude" | "chatgpt";
+export type AccountGroup = "claude" | "chatgpt" | "antigravity";
 
 export function accountGroupOf(instance: InstanceInfo): AccountGroup | null {
   if (instance.readOnly || instance.trialCredit || instance.access === "custom" || instance.access === "api") return null;
   if (instance.driverKind === "claudeAgent") return "claude";
+  if (instance.driverKind === "antigravityAgent") return "antigravity";
   const method = instance.authentication?.method;
   return instance.snapshot.chatgptPlan === true || ((method === "device-code" || method === "browser-pkce") && deviceSignInProvider(instance.driverKind) === "codex")
     ? "chatgpt" : null;
@@ -32,13 +35,18 @@ function accountState(instance: InstanceInfo): AccountState {
 const COPY: Record<AccountGroup, Record<"title" | "add" | "removeBody", LocaleKey>> = {
   claude: { title: "accounts.claude", add: "accounts.addClaude", removeBody: "accounts.removeBodyClaude" },
   chatgpt: { title: "accounts.chatgpt", add: "accounts.addChatgpt", removeBody: "accounts.removeBodyChatgpt" },
+  antigravity: { title: "accounts.antigravity", add: "engineSetup.antigravity.addAccount", removeBody: "accounts.removeBodyAntigravity" },
 };
 
 /** What an account's menu offers. Only accounts added here can be removed; each provider's first account stays. */
 export function accountActions(group: AccountGroup, instance: InstanceInfo): { signOut: boolean; remove: boolean } {
   return {
     signOut: accountState(instance) === "signedIn" && instance.authentication?.signOut === true && instance.snapshot.account?.method !== "api-key",
-    remove: group === "claude" ? instance.instanceId !== "claude" && instance.claudeAccount?.isDefault !== true : instance.instanceId.startsWith("chatgpt-"),
+    remove: group === "claude"
+      ? instance.instanceId !== "claude" && instance.claudeAccount?.isDefault !== true
+      : group === "chatgpt"
+        ? instance.instanceId.startsWith("chatgpt-")
+        : instance.instanceId.startsWith("antigravity-"),
   };
 }
 
@@ -55,11 +63,11 @@ function summaryFor(group: AccountGroup, accounts: InstanceInfo[]): EngineCardSu
     ? t("accounts.count", { count: String(accounts.length), signedIn: String(signedIn.length) })
     : signedIn[0]?.snapshot.account?.email ?? providerName(accounts[0]!);
   return {
-    title: t(COPY[group].title),
+    title: accounts.length === 1 && group === "antigravity" ? accounts[0]!.displayName : t(COPY[group].title),
     subtitle,
     ready,
     status: ready ? t("onboarding.engines.ready") : installed ? t("model.signInRequired") : t("onboarding.engines.needsSetup"),
-    action: ready ? t("engines.library.manage") : installed ? t("accounts.signIn") : t("engines.library.setup"),
+    action: ready ? t("engines.library.manage") : group === "antigravity" ? t("engines.library.setup") : installed ? t("accounts.signIn") : t("engines.library.setup"),
   };
 }
 
@@ -92,6 +100,22 @@ function AccountMenu({ group, instance, onRename }: { group: AccountGroup; insta
     setBusy(true);
     setError(null);
     try {
+      if (action === "remove") {
+        const usingBots = state.bots.filter((bot) => bot.modelSelection.instanceId === instance.instanceId);
+        if (usingBots.length > 0) {
+          const fallback = state.instances.find((i) => i.instanceId !== instance.instanceId && accountGroupOf(i) === group && i.snapshot.authenticated)
+            ?? state.instances.find((i) => i.instanceId !== instance.instanceId && accountGroupOf(i) === group)
+            ?? state.instances.find((i) => i.snapshot.state === "available" && i.instanceId !== instance.instanceId);
+          if (fallback) {
+            for (const b of usingBots) {
+              await api(`/api/bots/${encodeURIComponent(b.id)}/model`, {
+                method: "PATCH",
+                body: JSON.stringify({ instanceId: fallback.instanceId, model: fallback.models.default || fallback.models.options[0]?.id }),
+              }).catch(() => {});
+            }
+          }
+        }
+      }
       const path = `/api/instances/${encodeURIComponent(instance.instanceId)}${action === "signOut" ? "/auth/sign-out" : ""}`;
       const { instances } = await api(path, action === "signOut" ? { method: "POST" } : { method: "DELETE" });
       // The response is the confirmed state: a second request could fail and leave a stale row.
@@ -107,7 +131,7 @@ function AccountMenu({ group, instance, onRename }: { group: AccountGroup; insta
   const item = "ui-menu-row w-full text-left disabled:cursor-not-allowed disabled:opacity-50";
   return (
     <div ref={menuRef} className="relative flex items-center gap-1">
-      {canRemove && <button type="button" disabled={busy || usedBy > 0} onClick={() => setConfirm("remove")}
+      {canRemove && <button type="button" disabled={busy} onClick={() => setConfirm("remove")}
         title={usedBy > 0 ? t("accounts.inUse", { count: String(usedBy) }) : undefined}
         className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-danger hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50">
         {t("accounts.remove")}
@@ -136,7 +160,7 @@ function AccountMenu({ group, instance, onRename }: { group: AccountGroup; insta
       <ConfirmDialog
         open={confirm === "remove"}
         title={t("accounts.removeTitle", { name: instance.displayName })}
-        body={t(COPY[group].removeBody)}
+        body={usedBy > 0 ? `${t(COPY[group].removeBody)} ${t("accounts.inUse", { count: String(usedBy) })}` : t(COPY[group].removeBody)}
         confirmLabel={t("accounts.remove")}
         tone="neutral"
         onCancel={() => setConfirm(null)}
@@ -196,7 +220,7 @@ function AccountRow({ group, instance, signingIn, onSignIn, onSignInDone }: {
   // This server cannot run the provider's sign-in (a remote browser for a local-only flow): say why, offer nothing.
   const blocked = instance.snapshot.authenticationUnavailableReason;
   const detail = blocked && state !== "signedIn" ? blocked : state === "signedIn"
-    ? account?.method === "api-key" ? t("accounts.apiKey") : [account?.email, account?.organization].filter(Boolean).join(" · ") || t("accounts.signedIn")
+    ? account?.method === "api-key" ? t("accounts.apiKey") : [account?.email, account?.organization].filter(Boolean).join(" · ") || (group === "antigravity" ? t("engineSetup.antigravity.emailUnavailable") : t("accounts.signedIn"))
     : state === "signedOut" ? t("accounts.notSignedIn")
     : state === "unknown" ? t("accounts.unknown")
     : instance.snapshot.reason ?? t("onboarding.engines.needsSetup");
@@ -217,7 +241,7 @@ function AccountRow({ group, instance, signingIn, onSignIn, onSignInDone }: {
             {state !== "signedIn" && state !== "unavailable" && !blocked && !signingIn && (
               <button type="button" onClick={onSignIn} className={cn("shrink-0 rounded-lg px-3 py-1.5 text-[12px] font-semibold",
                 state === "signedOut" ? "bg-accent text-white hover:brightness-110" : "bg-control text-ink hover:bg-raised-hover")}>
-                {t("accounts.signIn")}
+                {group === "antigravity" ? t("engineSetup.signInGoogle") : t("accounts.signIn")}
               </button>
             )}
             <AccountMenu group={group} instance={instance} onRename={() => setRenaming(true)} />
@@ -226,8 +250,8 @@ function AccountRow({ group, instance, signingIn, onSignIn, onSignInDone }: {
       </div>
       {signingIn && (
         <div className="pl-9">
-          {group === "claude"
-            ? <>
+          {group === "claude" ? (
+            <>
               <ClaudeSignIn instanceId={instance.instanceId} autoStart onDone={onSignInDone} />
               {instance.claudeAccount?.signInCommand && (
                 <details className="mt-2 text-[11.5px] text-ink-secondary">
@@ -236,7 +260,11 @@ function AccountRow({ group, instance, signingIn, onSignIn, onSignInDone }: {
                 </details>
               )}
             </>
-            : <DeviceSignIn instanceId={instance.instanceId} provider="codex" browserPkce={instance.authentication?.method === "browser-pkce"} autoStart onDone={onSignInDone} />}
+          ) : group === "chatgpt" ? (
+            <DeviceSignIn instanceId={instance.instanceId} provider="codex" browserPkce={instance.authentication?.method === "browser-pkce"} autoStart onDone={onSignInDone} />
+          ) : (
+            <GoogleSignIn instanceId={instance.instanceId} autoStart onDone={onSignInDone} />
+          )}
         </div>
       )}
       {group === "chatgpt" && state === "signedIn" && instance.snapshot.chatgptPlan && (
@@ -335,9 +363,18 @@ export function AccountsCard({ group, accounts, advanced }: { group: AccountGrou
                 onSignInDone={() => setSigningIn((current) => current === instance.instanceId ? null : current)} />
             ))}
           </ul>
-          {!primary.snapshot.authenticationUnavailableReason && <AddAccount label={t(COPY[group].add)} endpoint={`/api/instances/${group}-accounts`} folder={group === "claude"} onAdded={setSigningIn} />}
+          {!primary.snapshot.authenticationUnavailableReason && (
+            <AddAccount
+              label={t(COPY[group].add)}
+              endpoint={group === "antigravity" ? "/api/instances/antigravity-accounts" : `/api/instances/${group}-accounts`}
+              extra={group === "antigravity" ? { sourceInstanceId: primary.instanceId } : undefined}
+              folder={group === "claude"}
+              onAdded={setSigningIn}
+            />
+          )}
         </div>
       )}
+      {primary.freeUpSpace && <AntigravityFreeSpace instance={primary} />}
       {primary.snapshot.update && <EngineUpdateNotice update={primary.snapshot.update} instance={primary} className="mt-3" quiet />}
       {primary.snapshot.warning && <EngineWarningNotice warning={primary.snapshot.warning} className="mt-3" />}
       {advanced}

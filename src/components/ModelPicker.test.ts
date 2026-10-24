@@ -327,6 +327,20 @@ describe("ModelPicker trigger", () => {
     expect(markup).toMatch(/<span data-model-account-compact="true" class="hidden max-w-20 truncate @max-4xl\/chathead:inline">Work<\/span><span class="[^"]*@max-4xl\/chathead:hidden"/);
     expect(markup).not.toContain("@max-4xl/chathead:size-[30px]");
   });
+
+  it("visibly identifies the selected account when Antigravity has multiple instances", () => {
+    fixture.instances = [
+      { ...engine(), instanceId: "antigravity-personal", driverKind: "antigravityAgent", displayName: "Personal" },
+      { ...engine(), instanceId: "antigravity-work", driverKind: "antigravityAgent", displayName: "Work" },
+    ];
+    const markup = renderToStaticMarkup(createElement(ModelPicker, {
+      bot: { ...bot(), modelSelection: { instanceId: "antigravity-work", model: "gpt-5.6" } },
+    }));
+    expect(markup).toMatch(/<span data-model-account[^>]*>Work · <\/span>/);
+    expect(markup).not.toMatch(/<span data-model-account[^>]*>Personal/);
+    expect(markup).toMatch(/<span data-model-account-compact="true" class="hidden max-w-20 truncate @max-4xl\/chathead:inline">Work<\/span><span class="[^"]*@max-4xl\/chathead:hidden"/);
+    expect(markup).not.toContain("@max-4xl/chathead:size-[30px]");
+  });
 });
 
 describe("OpenAI sign-ins in the rail", () => {
@@ -401,6 +415,45 @@ describe("Claude provider and account selection", () => {
     expect(markup).toContain('aria-label="Account"');
     expect(markup).toContain('<option value="claude-personal">Personal</option>');
     expect(markup).toContain('<option value="claude-work" selected="">Work</option>');
+    const select = Children.toArray(dropdown.props.children)[1] as ReactElement<{ onChange: (event: ChangeEvent<HTMLSelectElement>) => void }>;
+    select.props.onChange({ target: { value: personal.instanceId } } as ChangeEvent<HTMLSelectElement>);
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(personal);
+  });
+});
+
+describe("Antigravity provider and account selection", () => {
+  const personal: InstanceInfo = { ...engine(), instanceId: "antigravity-personal", driverKind: "antigravityAgent", displayName: "Personal" };
+  const work: InstanceInfo = { ...engine(), instanceId: "antigravity-work", driverKind: "antigravityAgent", displayName: "Work" };
+
+  it("renders one Google Gemini (Antigravity) provider button pressed for either account", () => {
+    for (const selectedInstance of [personal, work]) {
+      const markup = renderToStaticMarkup(createElement(ModelEngineRail, {
+        instances: [engine(), personal, work], selectedInstance, antigravityInstance: work, onSelect: () => {},
+      }));
+      expect(markup.match(/aria-label="Google Gemini \(Antigravity\)"/g)).toHaveLength(1);
+      expect(markup).toContain('aria-label="Google Gemini (Antigravity)" aria-pressed="true"');
+      expect(markup).not.toContain('aria-label="Personal"');
+      expect(markup).not.toContain('aria-label="Work"');
+    }
+  });
+
+  it("opens the remembered Antigravity sign-in, falling back to the first account", () => {
+    const onSelect = vi.fn();
+    for (const antigravityInstance of [work, undefined]) {
+      const rail = ModelEngineRail({ instances: [personal, work], antigravityInstance, onSelect });
+      const button = Children.toArray(rail.props.children).find((child) => (child as ReactElement).type === "button") as ReactElement<{ onClick: () => void }>;
+      button.props.onClick();
+      expect(onSelect).toHaveBeenLastCalledWith(antigravityInstance ?? personal);
+    }
+  });
+
+  it("maps named native options to concrete Antigravity instances without committing a model", () => {
+    const onSelect = vi.fn();
+    const dropdown = ClaudeAccountSelect({ accounts: [personal, work], selectedId: work.instanceId, onSelect });
+    const markup = renderToStaticMarkup(dropdown);
+    expect(markup).toContain('aria-label="Account"');
+    expect(markup).toContain('<option value="antigravity-personal">Personal</option>');
+    expect(markup).toContain('<option value="antigravity-work" selected="">Work</option>');
     const select = Children.toArray(dropdown.props.children)[1] as ReactElement<{ onChange: (event: ChangeEvent<HTMLSelectElement>) => void }>;
     select.props.onChange({ target: { value: personal.instanceId } } as ChangeEvent<HTMLSelectElement>);
     expect(onSelect).toHaveBeenCalledExactlyOnceWith(personal);

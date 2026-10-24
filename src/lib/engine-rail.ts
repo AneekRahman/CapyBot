@@ -10,16 +10,21 @@ export function isCustomOnly(instance: { access?: InstanceInfo["access"] } | und
   return instance?.access === "custom";
 }
 
-export type SignInFamily = "claude" | "openai";
+export type SignInFamily = "claude" | "openai" | "antigravity";
 
 export function signInFamily(instance: { driverKind: string; access?: InstanceInfo["access"] } | undefined): SignInFamily | undefined {
   if (!instance || instance.access === "api") return undefined;
   if (instance.driverKind === "claudeAgent") return "claude";
   if (instance.driverKind === "codex") return "openai";
+  if (instance.driverKind === "antigravityAgent") return "antigravity";
   return undefined;
 }
 
-export const SIGN_IN_FAMILY_LABEL: Record<SignInFamily, string> = { claude: "Claude", openai: "OpenAI" };
+export const SIGN_IN_FAMILY_LABEL: Record<SignInFamily, string> = {
+  claude: "Claude",
+  openai: "OpenAI",
+  antigravity: "Google Gemini (Antigravity)",
+};
 
 export function isClaudeAccount(instance: { driverKind: string; access?: InstanceInfo["access"] } | undefined): boolean {
   return signInFamily(instance) === "claude";

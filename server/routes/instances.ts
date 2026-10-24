@@ -299,8 +299,8 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
         const instances = persistableInstanceConfigs(result.config);
         if (!result.ok || !Object.hasOwn(instances, instanceId)) return json(res, 404, { error: `unknown instance "${instanceId}"` });
         const entry = instances[instanceId];
-        if ((body.configDir !== undefined && entry.driver !== "claudeAgent") || (body.displayName !== undefined && !["claudeAgent", "codex"].includes(entry.driver))) {
-          return json(res, 400, { error: "Account settings are available for Claude and ChatGPT accounts only." });
+        if ((body.configDir !== undefined && entry.driver !== "claudeAgent") || (body.displayName !== undefined && !["claudeAgent", "codex", "antigravityAgent"].includes(entry.driver))) {
+          return json(res, 400, { error: "Account settings are available for Claude, ChatGPT, and Google Gemini accounts only." });
         }
         if (body.tools !== undefined) {
           if (!["openai-compat", "grok", "minimax", "mistral", "cerebras", "groq", "meta"].includes(entry.driver)) {

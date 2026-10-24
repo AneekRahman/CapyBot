@@ -375,3 +375,50 @@ describe("Settings → Engines → Claude accounts", () => {
   });
 
 });
+
+describe("Settings → Engines → Google Gemini (Antigravity) accounts", () => {
+  function antigravityAccount(instanceId: string, displayName: string, authenticated?: boolean, email?: string): InstanceInfo {
+    return {
+      instanceId,
+      driverKind: "antigravityAgent",
+      displayName,
+      cliDefault: "agy_acp_server",
+      snapshot: {
+        state: "available",
+        authenticated,
+        ...(authenticated && email ? { account: { email } } : {}),
+      },
+      models: { default: "gemini", options: [] },
+    };
+  }
+
+  function renderAntigravity(...instances: InstanceInfo[]) {
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("navigator", { userAgent: "Linux" });
+    fixture.instances = instances;
+    fixture.bots = [];
+    return renderToStaticMarkup(createElement(EnginesSettings));
+  }
+
+  it("lists multiple Antigravity accounts on one card with counts", () => {
+    const html = renderAntigravity(
+      antigravityAccount("antigravity", "primary@example.test", true, "primary@example.test"),
+      antigravityAccount("antigravity-second", "secondary@example.test", false),
+    );
+    expect(html.match(/data-engine-card=/g)).toHaveLength(1);
+    expect(html).toContain('data-engine-card="antigravity"');
+    expect(html).toContain("2 accounts · 1 signed in");
+    expect(html).toContain('data-account="antigravity" data-account-state="signedIn"');
+    expect(html).toContain('data-account="antigravity-second" data-account-state="signedOut"');
+    expect(html).toContain("primary@example.test");
+    expect(html).toContain("Sign in with Google");
+  });
+
+  it("allows removing added Antigravity accounts but not the primary account", () => {
+    const primary = antigravityAccount("antigravity", "Primary", true);
+    const added = antigravityAccount("antigravity-added", "Added", true);
+    expect(accountActions("antigravity", primary).remove).toBe(false);
+    expect(accountActions("antigravity", added).remove).toBe(true);
+    expect(renderAntigravity(primary, added)).toContain(">Remove<");
+  });
+});

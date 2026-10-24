@@ -89,6 +89,9 @@ it("adds independent accounts, switches a bot between their models, and preserve
     expect(JSON.stringify(instance)).not.toMatch(/synthetic-do-not-copy|refresh_token|client_secret/);
   }
   expect(new Set(ids).size).toBe(2);
+  const renamed = await api("PATCH", `/api/instances/${ids[0]}`, { displayName: "Renamed Personal" });
+  expect(renamed.status).toBe(200);
+  expect(renamed.body.instances.find((row: any) => row.instanceId === ids[0]).displayName).toBe("Renamed Personal");
   const saved = JSON.parse(readFileSync(join(home, "config.json"), "utf8"));
   for (const id of ids) {
     expect(saved.instances[id].config).toEqual({ cli });
