@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { lstatSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -942,9 +942,13 @@ function baseImagePullArgs(runtime: Runtime): string[] {
   return runtime === "container" ? ["image", "pull", BASE_IMAGE] : ["pull", BASE_IMAGE];
 }
 
-async function prepareManagedImage(runtime: Runtime, runner: CommandRunner): Promise<void> {
+async function prepareManagedImage(runtime: Runtime, runner: CommandRunner, platform: NodeJS.Platform): Promise<void> {
   await runner(runtime, baseImagePullArgs(runtime), 10 * 60_000);
-  const context = await mkdtemp(join(tmpdir(), "openmausbot-cua-image-"));
+  // A rootless container build re-executes under a fresh mount namespace, where the unit
+  // sandbox's PrivateTmp view of /tmp is gone; the context must be on a durable volume.
+  const contextRoot = platform === "win32" ? tmpdir() : join(homedir(), ".openmausbot-image-build");
+  await mkdir(contextRoot, { recursive: true, mode: 0o700 });
+  const context = await mkdtemp(join(contextRoot, "openmausbot-cua-image-"));
   try {
     await writeFile(join(context, "Dockerfile"), managedImageDockerfile(), { mode: 0o600 });
     await runner(runtime, ["build", "-t", IMAGE, context], 10 * 60_000);
@@ -991,7 +995,7 @@ export async function containerComputerAction(
   }
 
   if (action === "pull") {
-    await prepareManagedImage(runtime, runner);
+    await prepareManagedImage(runtime, runner, platform);
   } else {
     if (action === "run") await ensureVmWorkspace(platform, target);
     const args =
