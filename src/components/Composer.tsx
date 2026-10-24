@@ -1,7 +1,7 @@
 import { directMessageSent, roomMessageSent } from "@/lib/product-events";
 import { useComposerDictation } from "@/lib/use-composer-dictation";
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
-import { ArrowUp, BookOpen, Clock, Mic, Paperclip, Sparkles, Square, Target, X } from "lucide-react";
+import { ArrowUp, BookOpen, Clock, Loader2, Mic, Paperclip, Sparkles, Square, Target, X } from "lucide-react";
 import { useStore, visibleMessages, currentTaskBot, type Bot, type Group, type Message } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { useMenuMotion } from "./MenuMotion";
@@ -84,6 +84,7 @@ import {
   type ComposerSlashCommand,
 } from "@/lib/composer-commands";
 import { useSlashSkills } from "@/lib/use-slash-skills";
+import { speechService } from "@/lib/speech-service";
 
 interface ComposerDraftSnapshot extends ComposerSendSnapshot {
   reply: Message | null;
@@ -202,8 +203,9 @@ export function Composer({
     },
     [text, editText, editAttachments],
   );
-  const { recording, speechError, toggle: toggleMic, stop: stopDictation } = useComposerDictation({
-    draftId, text, onText: editText, available: capabilities.dictation.available,
+  const dictationAvailable = Boolean(capabilities.dictation.available || speechService.isAvailable());
+  const { recording, transcribing, speechError, toggle: toggleMic, stop: stopDictation } = useComposerDictation({
+    draftId, text, onText: editText, available: dictationAvailable,
   });
   const [caret, setCaret] = useState(0);
   const [highlight, setHighlight] = useState(0);
@@ -995,7 +997,7 @@ export function Composer({
             <Square size={14} className="fill-current" />
           </button>
         )}
-        {!locked && !busy && capabilities.dictation.available && (
+        {!locked && !busy && dictationAvailable && (
           <button
             onClick={toggleMic}
             aria-label={recording ? t("composer.dictation.stop") : t("composer.dictation.start")}
@@ -1003,11 +1005,19 @@ export function Composer({
               "flex size-8 shrink-0 items-center justify-center rounded-full",
               recording
                 ? "animate-pulse bg-danger/20 text-danger"
-                : advanced ? "text-ink-secondary hover:bg-raised hover:text-ink" : "bg-ink/[0.07] text-ink hover:bg-ink/[0.12]",
+                : transcribing
+                  ? "bg-accent/20 text-accent"
+                  : advanced ? "text-ink-secondary hover:bg-raised hover:text-ink" : "bg-ink/[0.07] text-ink hover:bg-ink/[0.12]",
             )}
-            title={recording ? t("composer.dictation.stopHint") : t("composer.dictation.hint")}
+            title={
+              transcribing
+                ? "Transcribing..."
+                : recording
+                  ? t("composer.dictation.stopHint")
+                  : `${t("call.mode.turns")} (${t("composer.dictation.hint")})`
+            }
           >
-            <Mic size={advanced ? 18 : 16} />
+            {transcribing ? <Loader2 size={advanced ? 18 : 16} className="animate-spin" /> : <Mic size={advanced ? 18 : 16} />}
           </button>
         )}
         {bot && !group && <CallButton bot={bot} placement="composer" fill={advanced ? undefined : MAUS_COLORS[bot.color] ?? MAUS_COLORS.green} />}

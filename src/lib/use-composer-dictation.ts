@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "./i18n";
+import { speechService } from "./speech-service";
 
 export function useComposerDictation({ draftId, text, onText, available }: {
   draftId: string;
@@ -8,49 +9,81 @@ export function useComposerDictation({ draftId, text, onText, available }: {
   available: boolean;
 }) {
   const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const draft = useRef({ id: draftId, text });
   draft.current = { id: draftId, text };
   const session = useRef({ draftId: "", base: "" });
-  const cancel = useRef<(() => void) | null>(null);
+  const activeSessionRef = useRef(false);
+  const stopFnRef = useRef<(() => void) | null>(null);
+
   const stop = useCallback(() => {
-    cancel.current?.();
     setRecording(false);
+    stopFnRef.current?.();
   }, []);
 
   useEffect(() => {
     if (!recording) return;
-    const bridge = window.ogb;
-    if (!bridge || session.current.draftId !== draftId) {
+    if (session.current.draftId !== draftId) {
       setRecording(false);
       return;
     }
     setSpeechError(null);
-    const base = session.current.base;
-    let lastText = base;
-    let active = true;
-    const cancelSession = () => {
-      if (!active) return;
-      active = false;
-      void bridge.speechStop();
-      setRecording(false);
+    let sessionActive = true;
+    activeSessionRef.current = true;
+    const base = session.current.base.trim();
+    let lastText = session.current.base;
+
+    const hasBridge = typeof window !== "undefined" && typeof window.ogb?.speechStart === "function";
+    const service = hasBridge && window.ogb ? {
+      start: () => window.ogb!.speechStart(),
+      stop: () => window.ogb!.speechStop(),
+      onTranscript: (cb: (l: { text?: string; error?: string }) => void) => window.ogb!.onSpeechTranscript(cb),
+      onEnd: (cb: (e: { code: number; reason?: string }) => void) => window.ogb!.onSpeechEnd(cb),
+    } : {
+      start: () => speechService.start(),
+      stop: () => speechService.stop(),
+      onTranscript: (cb: (l: { text?: string; error?: string }) => void) => speechService.onSpeechTranscript(cb),
+      onEnd: (cb: (e: { code: number; reason?: string }) => void) => speechService.onSpeechEnd(cb),
     };
-    cancel.current = cancelSession;
-    const offTranscript = bridge.onSpeechTranscript((line) => {
-      if (!active || draft.current.id !== draftId) return;
+
+    stopFnRef.current = () => {
+      if (!hasBridge) {
+        setTranscribing(true);
+      }
+      void service.stop();
+    };
+
+    const cancelSession = () => {
+      if (!sessionActive) return;
+      sessionActive = false;
+      activeSessionRef.current = false;
+      void service.stop();
+      setRecording(false);
+      setTranscribing(false);
+    };
+
+    const offTranscript = service.onTranscript((line) => {
+      if (!sessionActive || draft.current.id !== draftId) return;
       if (draft.current.text !== lastText) {
         cancelSession();
         return;
       }
       if (typeof line.text !== "string" || !line.text.trim()) return;
-      lastText = base ? `${base}${/\s$/.test(base) ? "" : " "}${line.text}` : line.text;
+      const heard = line.text.trim();
+      // If there is no message in the input box, add the transcribed text.
+      // If there is already text in the input box, append it.
+      lastText = base ? `${base} ${heard}` : heard;
       draft.current.text = lastText;
       onText(lastText);
     });
-    const offEnd = bridge.onSpeechEnd(({ code, reason }) => {
-      if (!active || draft.current.id !== draftId) return;
-      active = false;
+
+    const offEnd = service.onEnd(({ code, reason }) => {
+      if (!sessionActive || draft.current.id !== draftId) return;
+      sessionActive = false;
+      activeSessionRef.current = false;
       setRecording(false);
+      setTranscribing(false);
       if (code === 2) {
         setSpeechError(t("composer.dictation.macOnly"));
       } else if (code === 1) {
@@ -63,24 +96,29 @@ export function useComposerDictation({ draftId, text, onText, available }: {
         ));
       }
     });
-    void bridge.speechStart().catch(() => {
-      if (!active) return;
+
+    void service.start().catch(() => {
+      if (!sessionActive) return;
       cancelSession();
       setSpeechError(t("composer.dictation.failed"));
     });
+
     return () => {
-      if (cancel.current === cancelSession) cancel.current = null;
       offTranscript();
       offEnd();
-      if (active) {
-        active = false;
-        void bridge.speechStop();
+      if (sessionActive) {
+        sessionActive = false;
+        activeSessionRef.current = false;
+        void service.stop();
       }
+      setTranscribing(false);
     };
   }, [recording, draftId, onText]);
 
   const toggle = () => {
-    if (!available || !window.ogb) {
+    const hasBridge = typeof window !== "undefined" && typeof window.ogb?.speechStart === "function";
+    const canRun = available && (hasBridge || speechService.isAvailable());
+    if (!canRun) {
       setSpeechError(t("composer.dictation.unavailable"));
     } else if (recording) {
       stop();
@@ -89,5 +127,6 @@ export function useComposerDictation({ draftId, text, onText, available }: {
       setRecording(true);
     }
   };
-  return { recording, speechError, toggle, stop };
+
+  return { recording, transcribing, speechError, toggle, stop };
 }

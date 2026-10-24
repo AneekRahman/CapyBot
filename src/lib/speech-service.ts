@@ -402,7 +402,11 @@ class SpeechService {
       }
     };
 
-    recorder.start();
+    try {
+      recorder.start(100);
+    } catch {
+      recorder.start();
+    }
   }
 
   async stop(): Promise<void> {
