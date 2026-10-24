@@ -29,6 +29,7 @@ concurrency:
 jobs:
   prepare:
     name: Open the version-bump PR
+    if: vars.OMB_ENABLE_PUBLISHING == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

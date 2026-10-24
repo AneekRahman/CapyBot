@@ -51,6 +51,7 @@ permissions:
 jobs:
   prepare:
     name: Pin the release commit
+    if: vars.OMB_ENABLE_PUBLISHING == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -117,7 +118,7 @@ jobs:
     # touch) and deletes that branch afterwards.
     name: CI passed on the release commit
     needs: prepare
-    if: needs.prepare.outputs.should_release == 'true'
+    if: needs.prepare.outputs.should_release == 'true' && vars.OMB_ENABLE_PUBLISHING == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     permissions:
@@ -148,7 +149,7 @@ jobs:
   mac:
     name: macOS arm64 + x64 (sign, notarize, staple)
     needs: prepare
-    if: needs.prepare.outputs.should_release == 'true'
+    if: needs.prepare.outputs.should_release == 'true' && vars.OMB_ENABLE_PUBLISHING == 'true'
     runs-on: macos-14
     timeout-minutes: 90
     steps:
@@ -326,7 +327,7 @@ jobs:
   windows:
     name: Windows x64
     needs: prepare
-    if: needs.prepare.outputs.should_release == 'true'
+    if: needs.prepare.outputs.should_release == 'true' && vars.OMB_ENABLE_PUBLISHING == 'true'
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -401,7 +402,7 @@ jobs:
   linux:
     name: Ubuntu 24.04 x64
     needs: prepare
-    if: needs.prepare.outputs.should_release == 'true'
+    if: needs.prepare.outputs.should_release == 'true' && vars.OMB_ENABLE_PUBLISHING == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -490,7 +491,7 @@ jobs:
   assemble:
     name: Assemble the draft and verify every feed
     needs: [prepare, ci, mac, windows, linux]
-    if: needs.prepare.outputs.should_release == 'true'
+    if: needs.prepare.outputs.should_release == 'true' && vars.OMB_ENABLE_PUBLISHING == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     concurrency:

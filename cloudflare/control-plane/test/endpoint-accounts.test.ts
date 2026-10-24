@@ -54,13 +54,13 @@ describe("endpoint account configuration", () => {
     const configured = readConfig(withAccounts(production));
     expect(configured.endpointAccountIssues).toEqual([]);
     expect(configured.endpointAccounts.slice(1).map(({ apiToken: _token, ...account }) => account)).toEqual([{
-      accountId: "bbb5305f06e28a6f2abaac299f3b09dc",
-      companionHostSuffix: "mausbot.si",
+      accountId: "00000000000000000000000000000001",
+      companionHostSuffix: "endpoint.example.com",
       dnsRecordLimit: 3500,
       minAppVersion: "0.1.104",
       newEndpoints: true,
       tunnelLimit: 1000,
-      zoneId: "4ded3da43e7b2c3a5f27b0fb33e5bd7a",
+      zoneId: "00000000000000000000000000000001",
     }]);
     // Deployed before its token: the entry is dropped and reported, nothing breaks.
     const unsaved = readConfig(withAccounts(production, {}));
@@ -76,8 +76,8 @@ describe("endpoint account configuration", () => {
     expect(deployed.map(({ companionHostSuffix, dnsRecordLimit, tunnelLimit }) => (
       { companionHostSuffix, dnsRecordLimit, tunnelLimit }
     ))).toEqual([
-      { companionHostSuffix: "openmausbot.com", dnsRecordLimit: 3500, tunnelLimit: 1000 },
-      { companionHostSuffix: "mausbot.si", dnsRecordLimit: 3500, tunnelLimit: 1000 },
+      { companionHostSuffix: "example.com", dnsRecordLimit: 3500, tunnelLimit: 1000 },
+      { companionHostSuffix: "endpoint.example.com", dnsRecordLimit: 3500, tunnelLimit: 1000 },
     ]);
   });
 
