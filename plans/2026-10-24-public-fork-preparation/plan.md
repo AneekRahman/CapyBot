@@ -31,3 +31,37 @@ Product development and private operations share one branch. Release and hosted-
 ## Status log
 
 - 2026-10-24 — Preparation authorized; separate checkout created at the shared upstream baseline. No push authorized.
+- 2026-10-24 — Replayed 33 product commits; omitted 62 commits containing only excluded material. New commits use a public noreply identity and synthetic account fixtures.
+- 2026-10-24 — Public contributor and source-build documentation committed as `627888d07`; safe distribution defaults and isolated packaging regression committed as `bce82813a`.
+- 2026-10-24 — Verified 518 retained-feature tests, 13 OSS fallback tests, distribution tests, and 1,056 Electron tests (3 platform skips). Lint, 12 locale catalogs, and theme contrast checks passed.
+- 2026-10-24 — Typechecking and production builds passed using `NODE_OPTIONS=--max-old-space-size=8192`; the default heap was insufficient for server typechecking in the verification environment.
+- 2026-10-24 — Seven packaged-server smoke checks passed. A disposable fake-engine fixture passed doctor, bot listing, a chat/tool turn, and message readback; the launcher and temporary data were cleaned up.
+
+## Project environment
+
+The product is an Electron/React TypeScript application, not React Native. The
+declared runtime is Node 24 or later and pnpm 10.33.0; verification used Node
+26.9.0. Dependencies were installed with a frozen lockfile and
+`OMB_SKIP_HOOKS=1` to avoid changing shared checkout hook configuration.
+
+The verification commands were:
+
+```sh
+pnpm lint
+pnpm i18n:check
+pnpm check:contrast
+pnpm typecheck
+NODE_OPTIONS="--max-old-space-size=8192" pnpm exec tsc -p tsconfig.server.json
+NODE_OPTIONS="--max-old-space-size=8192" pnpm build
+NODE_OPTIONS="--max-old-space-size=8192" pnpm build:server
+pnpm test:electron
+pnpm broker:test
+pnpm exec vitest run scripts/build-npm-package.test.mjs
+node scripts/smoke-packaged-server.mjs
+node --experimental-strip-types scripts/control-omb.ts launch
+```
+
+Fixture commands used the launcher's explicit ephemeral loopback URL. A fake
+engine completed a turn and its tool activity was read back through the shared
+control surface. This does not qualify real provider sign-in, live hosted
+deployments, every renderer interaction, or signed native installer releases.
