@@ -71,8 +71,8 @@ describe("faded text", () => {
     }
   });
 
-  it("repaints the tertiary ink inside Daylight's inverted bubble", () => {
-    const bubble = css.match(/@scope \(\[data-skin="daylight"\]\) to \(\[data-skin\]\)\s*\{\s*\.bg-bubble-user\s*\{([^}]*)\}/)?.[1] ?? "";
+  it("repaints the tertiary ink inside Meadow's inverted bubble", () => {
+    const bubble = css.match(/@scope \(\[data-skin="meadow"\]\) to \(\[data-skin\]\)\s*\{\s*\.bg-bubble-user\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(declarations(bubble)["--color-ink-tertiary"]).toBeDefined();
   });
 

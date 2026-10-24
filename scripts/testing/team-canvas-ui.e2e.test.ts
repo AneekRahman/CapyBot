@@ -347,7 +347,7 @@ type BotRecord = {
     }
     await click("Fit teams to view");
     const screenshots: string[] = [];
-    for (const skin of ["midnight", "daylight"]) {
+    for (const skin of ["midnight", "pop"]) {
       await evaluate(`import('/src/lib/skins.ts').then(({ applySkin }) => { applySkin(${JSON.stringify(skin)}); return document.documentElement.dataset.skin; })`);
       await evaluate("document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))))");
       // Read the theme's target color without inheriting a card transition,

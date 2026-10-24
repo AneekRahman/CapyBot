@@ -186,18 +186,18 @@ process.on('SIGTERM',()=>{fs.appendFileSync(log,'close ');process.exit(0)});
   await command("wait", "--fn", "document.getAnimations().every(a => a.playState !== 'running')");
   await command("screenshot", phoneScreenshot);
   assert.equal(await evaluate("(() => { const r = document.querySelector('section').getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight; })()"), true);
-  await evaluate("document.documentElement.dataset.skin = 'daylight'");
-  await command("wait", "--fn", "getComputedStyle(document.getElementById('retry')).color === 'rgb(87, 87, 87)'");
+  await evaluate("document.documentElement.dataset.skin = 'meadow'");
+  await command("wait", "--fn", "getComputedStyle(document.getElementById('retry')).color === 'rgb(77, 90, 82)'");
   assert.equal(await evaluate(matchingBackgrounds), true);
   const lightScreenshot = join(evidenceDir, `viewer-${process.pid}-light.png`);
   await command("screenshot", lightScreenshot);
   // Match the shared skin rules for both enabled and disabled accent buttons.
-  await evaluate("document.documentElement.dataset.skin = 'foundry'");
-  await command("wait", "--fn", "getComputedStyle(document.getElementById('send')).color === 'rgb(176, 166, 150)'");
-  await command("fill", "#text", "Foundry preview");
-  await command("wait", "--fn", "getComputedStyle(document.getElementById('send')).color === 'rgb(28, 21, 12)'");
-  const foundryScreenshot = join(evidenceDir, `viewer-${process.pid}-foundry.png`);
-  await command("screenshot", foundryScreenshot);
+  await evaluate("document.documentElement.dataset.skin = 'mocha'");
+  await command("wait", "--fn", "getComputedStyle(document.getElementById('send')).color === 'rgb(193, 199, 223)'");
+  await command("fill", "#text", "Mocha preview");
+  await command("wait", "--fn", "getComputedStyle(document.getElementById('send')).color === 'rgb(17, 17, 27)'");
+  const mochaScreenshot = join(evidenceDir, `viewer-${process.pid}-mocha.png`);
+  await command("screenshot", mochaScreenshot);
   // A short landscape viewport must keep both the dock and panel scrollable.
   await command("set", "viewport", "844", "390");
   assert.equal(await evaluate("document.documentElement.scrollHeight <= innerHeight && document.querySelector('section').getBoundingClientRect().height <= innerHeight"), true);
@@ -270,7 +270,7 @@ process.on('SIGTERM',()=>{fs.appendFileSync(log,'close ');process.exit(0)});
   assert.equal(await evaluate("fetch('/api/auth/logout',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(r=>r.status)"), 200);
   await command("wait", "--fn", "document.getElementById('status').textContent.includes('disconnected')");
   assert.ok(beforeLogout >= 2);
-  console.log(JSON.stringify({ ok: true, checks: ["built noVNC renders RFB pixels", "paired status uses app URL", "keyboard, Unicode and Ctrl-Alt-Del", "clipboard sync without Send, including clearing", "matching desktop backgrounds in both themes", "Foundry accent text", "95% fit, full-height fullscreen and fit restoration", "balanced collapsed margins and compact panel header", "native tooltips and reduced-motion panels", "phone and landscape viewports", "reconnect", "page exit aborts pending connection and restore reconnects", "VPS join, synthetic SSH forward and reconnect", "logout closes socket"], logPath: fixture.info.logPath, screenshots: [desktopScreenshot, clipboardScreenshot, phoneScreenshot, lightScreenshot, foundryScreenshot] }));
+  console.log(JSON.stringify({ ok: true, checks: ["built noVNC renders RFB pixels", "paired status uses app URL", "keyboard, Unicode and Ctrl-Alt-Del", "clipboard sync without Send, including clearing", "matching desktop backgrounds in both themes", "Mocha accent text", "95% fit, full-height fullscreen and fit restoration", "balanced collapsed margins and compact panel header", "native tooltips and reduced-motion panels", "phone and landscape viewports", "reconnect", "page exit aborts pending connection and restore reconnects", "VPS join, synthetic SSH forward and reconnect", "logout closes socket"], logPath: fixture.info.logPath, screenshots: [desktopScreenshot, clipboardScreenshot, phoneScreenshot, lightScreenshot, mochaScreenshot] }));
 } catch (error) {
   if (browser) console.error(await agentBrowser(browser.binary, browser.env, ["eval", "document.body.innerText"]).catch(() => "Browser unavailable"));
   throw error;

@@ -41,7 +41,7 @@ describe("interface mode", () => {
   });
 
   it("defaults an existing install to Advanced so an update hides nothing", async () => {
-    local.setItem("omb-skin", "lagoon");
+    local.setItem("omb-skin", "pop");
     const { readAdvancedMode, settleAdvancedModeDefault, ADVANCED_MODE_KEY } = await fresh();
     expect(readAdvancedMode()).toBe(true);
     settleAdvancedModeDefault();

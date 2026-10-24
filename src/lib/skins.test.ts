@@ -38,16 +38,15 @@ describe("skins", () => {
   it("selects a code-only light or dark palette in every nearest skin", () => {
     for (const id of SKIN_IDS) {
       const body = css.match(new RegExp(`\\[data-skin="${id}"\\]\\s*\\{([^}]*)\\}`))?.[1] ?? "";
-      const scheme = ["atelier", "lagoon", "linen", "daylight", "meadow", "pop"].includes(id) ? "light" : "dark";
+      const scheme = ["meadow", "pop"].includes(id) ? "light" : "dark";
       expect(body).toContain(`--code-color-scheme: ${scheme};`);
     }
     expect(css).toMatch(/\.chat-md \.shiki\s*\{\s*color-scheme:\s*var\(--code-color-scheme\);\s*\}/);
   });
 
-  it("adds Meadow without moving or replacing the original eight", () => {
-    expect(SKIN_IDS).toContain("meadow");
-    expect(SKIN_IDS.slice(0, 8)).toEqual([
-      "midnight", "atelier", "foundry", "lagoon", "graphite", "linen", "dusk", "daylight",
+  it("orders the curated skins with Pop as the top pick while keeping Meadow as default", () => {
+    expect(SKIN_IDS).toEqual([
+      "pop", "midnight", "graphite", "meadow", "mocha", "stealth", "halloween",
     ]);
     expect(DEFAULT_SKIN).toBe("meadow");
     expect(PRIOR_INSTALL_SKIN).toBe("midnight");
@@ -57,11 +56,8 @@ describe("skins", () => {
     expect(css).toMatch(/@scope \(\[data-skin="meadow"\]\) to \(\[data-skin\]\)\s*\{\s*\.bg-bubble-user\s*\{/);
   });
 
-  it("adds Pop after Meadow with its own inverted bubble and sticker scope", () => {
-    expect(SKIN_IDS.slice(0, 9)).toEqual([
-      "midnight", "atelier", "foundry", "lagoon", "graphite", "linen", "dusk", "daylight", "meadow",
-    ]);
-    expect(SKIN_IDS[9]).toBe("pop");
+  it("gives Pop its own inverted bubble and sticker scope", () => {
+    expect(SKIN_IDS[0]).toBe("pop");
     expect(css).toMatch(/@scope \(\[data-skin="pop"\]\) to \(\[data-skin\]\)\s*\{\s*\.bg-bubble-user\s*\{/);
     expect(css).toMatch(/@scope \(\[data-skin="pop"\]:not\(\[data-skin-preview\]\)\) to \(\[data-skin\]\)/);
   });

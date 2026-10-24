@@ -201,13 +201,14 @@ describe("speechService", () => {
     }
 
     let mockRecorderInstance: any = null;
+    const captureInstance = (inst: any) => { mockRecorderInstance = inst; };
     class MockMediaRecorder {
       state = "recording";
       mimeType = "audio/webm";
       ondataavailable: ((e: any) => void) | null = null;
       onstop: (() => void) | null = null;
       constructor() {
-        mockRecorderInstance = this;
+        captureInstance(this);
       }
       start() {}
       stop() {

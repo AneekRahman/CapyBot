@@ -45,8 +45,8 @@ describe("default skin", () => {
   });
 
   it("always honours a skin someone chose", async () => {
-    values.set("omb-skin", "lagoon");
-    expect(await boot()).toMatchObject({ skin: "lagoon" });
+    values.set("omb-skin", "pop");
+    expect(await boot()).toMatchObject({ skin: "pop" });
     values.clear();
     values.set("omb-skin", "midnight");
     values.set("omb-advanced-mode", "0");

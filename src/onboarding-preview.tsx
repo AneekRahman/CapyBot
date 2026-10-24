@@ -55,7 +55,7 @@ function previewImport(mode: string | null): SetupImportClient {
   };
 }
 
-/** ?beat=engines&skin=linen&reduced=1&all=1 opens any state directly; ?w=390&h=760 sizes the stage like a narrow window. */
+/** ?beat=engines&skin=pop&reduced=1&all=1 opens any state directly; ?w=390&h=760 sizes the stage like a narrow window. */
 function fromUrl() {
   const params = new URLSearchParams(location.search);
   const beat = params.get("beat") as BeatId | null;

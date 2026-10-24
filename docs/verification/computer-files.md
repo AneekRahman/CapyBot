@@ -27,7 +27,7 @@ Check the following in the browser:
    error rather than pretending it was downloaded.
 5. `unshared.txt` says **Not shared**, explains that the bot must share a
    link in chat, and offers no download or preview. A digest is not a grant.
-6. Repeat at a narrow viewport and with `?skin=atelier` for the light theme.
+6. Repeat at a narrow viewport and with `?skin=pop` for the light theme.
    Long file names must not push the panel wider.
 
 Focused checks:

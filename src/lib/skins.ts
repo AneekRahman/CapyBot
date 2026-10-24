@@ -1,21 +1,12 @@
 import { hasPriorRun } from "./prior-run";
 
 export const SKIN_IDS = [
-  "midnight",
-  "atelier",
-  "foundry",
-  "lagoon",
-  "graphite",
-  "linen",
-  "dusk",
-  "daylight",
-  "meadow",
   "pop",
+  "midnight",
+  "graphite",
+  "meadow",
   "mocha",
-  "tokyo",
-  "nordic",
   "stealth",
-  "groove",
   "halloween",
 ] as const;
 export type SkinId = (typeof SKIN_IDS)[number];
@@ -27,21 +18,12 @@ export type Skin = {
 };
 
 export const SKINS: readonly Skin[] = [
-  { id: "midnight", name: "Midnight", tagline: "The original. Cool and dark." },
-  { id: "atelier", name: "Atelier", tagline: "Daylight on paper, warm and quiet." },
-  { id: "foundry", name: "Foundry", tagline: "Night shift. Dark, warm, lit in brass." },
-  { id: "lagoon", name: "Lagoon", tagline: "Cool daylight. Porcelain and deep teal." },
-  { id: "graphite", name: "Graphite", tagline: "Quiet charcoal and softened steel blue." },
-  { id: "linen", name: "Linen", tagline: "Clean daylight with a restrained navy accent." },
-  { id: "dusk", name: "Dusk", tagline: "Muted plum after dark, calm and low-key." },
-  { id: "daylight", name: "Daylight", tagline: "Midnight in reverse. Near-white, ink-black bubbles." },
-  { id: "meadow", name: "Meadow", tagline: "Fresh white with a calm green. The MausBot look." },
   { id: "pop", name: "Pop", tagline: "Cream paper, thick ink outlines, hard shadows. Chunky and cheerful." },
+  { id: "midnight", name: "Midnight", tagline: "The original. Cool and dark." },
+  { id: "graphite", name: "Graphite", tagline: "Quiet charcoal and softened steel blue." },
+  { id: "meadow", name: "Meadow", tagline: "Fresh white with a calm green. The MausBot look." },
   { id: "mocha", name: "Mocha", tagline: "Soothing dark pastel with lavender warmth. Easy on the eyes." },
-  { id: "tokyo", name: "Tokyo", tagline: "Cyber-indigo midnight lit in electric cyan and neon purple." },
-  { id: "nordic", name: "Nordic", tagline: "Arctic frost and cool slate. Crisp, balanced, distraction-free." },
   { id: "stealth", name: "Stealth", tagline: "Pitch-black OLED with razor hairlines and electric blurple." },
-  { id: "groove", name: "Groove", tagline: "Warm retro espresso and earthy amber. The analog terminal feel." },
   { id: "halloween", name: "Halloween", tagline: "Plum after dark, lit in pumpkin orange. Bats optional." },
 ];
 

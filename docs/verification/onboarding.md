@@ -96,7 +96,7 @@ the trial's Claude credit in the engine list. Open the printed `previewUrl`:
   `?move=copy` or `?move=done` shows the one-time move on its way or landed
   (6 bots, 142 chats, 4 routines).
 - `?step=engine`, `?step=files` or `?step=done` opens the welcome on that step;
-  `?skin=daylight` (or any skin) picks the skin.
+  `?skin=meadow` (or any skin) picks the skin.
 - `POST /__fixture/engines?mode=signed-in` (or `signed-out`, `credit`) changes
   the engine list for the next load.
 

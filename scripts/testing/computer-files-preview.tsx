@@ -8,7 +8,7 @@ import "../../src/styles.css";
 
 setAnalyticsEnabled(false);
 setLocale("en");
-applySkin(new URLSearchParams(location.search).get("skin") === "atelier" ? "atelier" : "midnight");
+applySkin(new URLSearchParams(location.search).get("skin") === "pop" ? "pop" : "midnight");
 const bot: Bot = await fetch("/__computer-files-fixture").then((response) => response.json());
 const value = {
   state: { ...initialState, bots: [bot], selectedId: bot.id },

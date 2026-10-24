@@ -5,7 +5,7 @@ import { setAnalyticsEnabled } from "../../src/lib/analytics";
 import "../../src/styles.css";
 
 setAnalyticsEnabled(false);
-applySkin(new URLSearchParams(location.search).get("skin") === "atelier" ? "atelier" : "midnight");
+applySkin(new URLSearchParams(location.search).get("skin") === "pop" ? "pop" : "midnight");
 const fixture = await fetch("/__table-fixture").then((response) => response.json());
 createRoot(document.getElementById("root")!).render(
   <main className="mx-auto max-w-4xl p-4 text-ink sm:p-8">

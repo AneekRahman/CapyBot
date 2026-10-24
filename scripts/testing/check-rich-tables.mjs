@@ -93,7 +93,7 @@ try {
   assert.equal(await page.getByRole("dialog").count(), 0);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  url.searchParams.set("skin", "atelier");
+  url.searchParams.set("skin", "pop");
   await page.goto(url.href);
   await page.getByRole("button", { name: "Preview table: sales.csv", exact: true }).click();
   await dialog.getByText("50,000 of 50,000 rows · 4 columns", { exact: true }).waitFor();
