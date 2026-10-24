@@ -1,7 +1,7 @@
 # Prepare a public fork without private operational records
 
-**Status:** in-progress
-**Owner:** fork maintainers · **Created:** 2026-10-24 · **Shipped:** not yet
+**Status:** implemented locally; publication awaiting human approval
+**Owner:** fork maintainers · **Created:** 2026-10-24 · **Shipped:** local preparation commits `627888d07`, `bce82813a`, `30d4e1739`, `d3614ea11`; not pushed
 
 ## Problem
 
@@ -36,6 +36,9 @@ Product development and private operations share one branch. Release and hosted-
 - 2026-10-24 — Verified 518 retained-feature tests, 13 OSS fallback tests, distribution tests, and 1,056 Electron tests (3 platform skips). Lint, 12 locale catalogs, and theme contrast checks passed.
 - 2026-10-24 — Typechecking and production builds passed using `NODE_OPTIONS=--max-old-space-size=8192`; the default heap was insufficient for server typechecking in the verification environment.
 - 2026-10-24 — Seven packaged-server smoke checks passed. A disposable fake-engine fixture passed doctor, bot listing, a chat/tool turn, and message readback; the launcher and temporary data were cleaned up.
+- 2026-10-24 — Publisher gates and example hosted-service configuration committed as `30d4e1739`. All 13 workflow files parsed, both Worker dry-runs/typechecks passed, and 72 focused configuration tests passed. Publishing targets still require deliberate reconfiguration before enabling `OMB_ENABLE_PUBLISHING`.
+- 2026-10-24 — Independent final review of `d3614ea11` passed: 39 commits after the shared upstream baseline, zero Gitleaks findings in that candidate range, and no targeted private identifiers or excluded paths in the tracked tree. Shared upstream history is retained; a negative scan is not a guarantee of absence of every possible secret.
+- 2026-10-24 — Final sign-off documentation is the only change after that review. This commit is rescanned before export. No repository creation, remote push, release, or live deployment has been performed.
 
 ## Project environment
 
