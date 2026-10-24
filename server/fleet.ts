@@ -198,7 +198,18 @@ export function fenceUnit(layout = fleetLayout()): string {
 
 /** nftables: only a workspace's own user, Caddy and root may open its loopback ports, so a bot's shell cannot reach a sibling's API. */
 export function fenceRules(workspaces: FleetWorkspace[]): string {
-  const lines = ["#!/usr/sbin/nft -f", "# Written by `openmausbot fleet`; regenerated on every create, suspend, resume and delete.", "add table inet openmausbot", "flush table inet openmausbot", "table inet openmausbot {", "\tchain output {", "\t\ttype filter hook output priority 0; policy accept;"];
+  const lines = [
+    "#!/usr/sbin/nft -f",
+    "# Written by `openmausbot fleet`; regenerated on every create, suspend, resume and delete.",
+    "add table inet openmausbot",
+    "flush table inet openmausbot",
+    "table inet openmausbot {",
+    "\tchain output {",
+    "\t\ttype filter hook output priority 0; policy accept;",
+    "\t\t# Only root may reach the cloud metadata service: the instance role can read the fleet backup bucket, which holds every workspace's provider credentials.",
+    "\t\tip daddr 169.254.169.254 tcp dport 80 meta skuid != root reject",
+    "\t\tip6 daddr fd00:ec2::254 tcp dport 80 meta skuid != root reject",
+  ];
   for (const workspace of [...workspaces].sort((a, b) => a.slug.localeCompare(b.slug))) {
     if (workspace.status !== "running" && workspace.status !== "suspended" && workspace.status !== "retained" && !workspace.accountCreated) continue;
     lines.push(`\t\toif lo tcp dport { ${workspace.port}, ${workspace.webhookPort} } meta skuid != { ${fleetUser(workspace.slug)}, caddy, root } reject`);

@@ -74,7 +74,10 @@ describe("rendered files", () => {
     expect(rules).toContain("add table inet openmausbot\nflush table inet openmausbot");
     expect(rules.indexOf("omb-acme")).toBeLessThan(rules.indexOf("omb-globex"));
     expect(rules).toContain("oif lo tcp dport { 8810, 8811 } meta skuid != { omb-acme, caddy, root } reject");
-    expect(fenceRules([])).not.toContain("reject");
+    expect(rules).toContain("ip daddr 169.254.169.254 tcp dport 80 meta skuid != root reject");
+    expect(rules).toContain("ip6 daddr fd00:ec2::254 tcp dport 80 meta skuid != root reject");
+    expect(fenceRules([])).not.toContain("oif lo tcp dport");
+    expect(fenceRules([])).toContain("ip daddr 169.254.169.254 tcp dport 80 meta skuid != root reject");
     const incomplete: FleetWorkspace = { slug: "pending", host: "pending.x", port: 8830, webhookPort: 8831, status: "provisioning", createdAt: "" };
     expect(fenceRules([incomplete])).not.toContain("omb-pending");
     expect(fenceRules([{ ...incomplete, accountCreated: true }])).toContain("omb-pending");
