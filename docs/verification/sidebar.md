@@ -96,3 +96,25 @@ and `src/lib/notify.test.ts` cover persisted preferences, blocked storage, cross
 reads after Settings unmounts, and the silent flag sent to the desktop bridge.
 Actual operating-system sound delivery requires a native Electron smoke test;
 the isolated browser cannot prove it.
+
+## Dynamic usage meter (Advanced mode)
+
+In Advanced UI mode, a dynamic usage meter renders in the sidebar navigation
+directly above the collapsible **Tools** dropdown header (above Tools,
+Automations, Team map, and Files):
+
+- **Reactivity:** Displays the 5-hour and Weekly quota meters for the active
+  model selected in the Rail Model Picker (or live rail preview).
+- **Gate:** Visible only when `interfaceMode` is Advanced. In Simple mode or in
+  the avatars-only icons rail, the meter is not rendered.
+- **Provider support:** Restricted to configured subscription providers (Codex,
+  Claude Code, Gemini Antigravity, Grok). Unsupported engines (such as local
+  Ollama or custom API keys) and unauthenticated accounts automatically hide the
+  meter.
+- **Gemini defaults:** Defaults to showing primary Gemini models quota.
+
+Static unit tests in `src/components/SidebarUsageMeter.test.ts`,
+`src/lib/dynamic-plan-usage.test.ts`, and `src/components/SidebarFooterNav.test.ts`
+verify DOM placement, Advanced mode gating, dynamic preview updates, Gemini
+defaults, and error/unsupported hiding.
+
