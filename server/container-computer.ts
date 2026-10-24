@@ -264,6 +264,16 @@ export async function containerRuntimeStatus(
         );
         return true;
       } catch {
+        if (candidate === "podman") {
+          try {
+            // Rootless Podman fails info after an unclean shutdown or reboot with "invalid internal status"; system migrate resets the pause process.
+            await runner("podman", ["system", "migrate"], 10_000);
+            await runner("podman", ["info", "--format", "json"], 10_000);
+            return true;
+          } catch {
+            return false;
+          }
+        }
         return false;
       }
     }),

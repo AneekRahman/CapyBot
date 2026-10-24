@@ -298,6 +298,35 @@ describe("containerComputerStatus", () => {
     });
   });
 
+  it("recovers a Podman runtime via system migrate when info initially fails with stale pause state", async () => {
+    let infoCalls = 0;
+    const fake = runner({
+      "/usr/bin/which podman": "podman\n",
+      "/usr/bin/which docker": new Error("missing"),
+      "podman system migrate": "migrated\n",
+    });
+    const originalRun = fake.run;
+    fake.run = async (cmd, args, timeout) => {
+      if (cmd === "podman" && args[0] === "info") {
+        infoCalls++;
+        if (infoCalls === 1) {
+          throw new Error("invalid internal status, try resetting the pause process with podman system migrate");
+        }
+        return { stdout: '{"host":{"arch":"amd64"}}\n' };
+      }
+      return originalRun(cmd, args, timeout);
+    };
+
+    const status = await containerRuntimeStatus(fake.run, "linux");
+
+    expect(status).toEqual({
+      runtime: "podman",
+      available: ["podman"],
+      daemonUp: true,
+    });
+    expect(fake.calls).toContain("podman system migrate");
+  });
+
   it.each(["exact", "legacy", "missing-effective", "missing-bounding", "extra-effective", "extra-bounding"])(
     "checks Podman-on-Windows readiness with %s capabilities and a WSL-translated durable mount", async (caps) => {
     const derived = perBotLocalVmTarget("bot-win");
