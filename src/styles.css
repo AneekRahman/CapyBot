@@ -830,6 +830,251 @@
   --identity-coral: #d1381f;
 }
 
+[data-skin="mocha"] {
+  --code-color-scheme: dark;
+  --color-app: #11111b;
+  --color-panel: #181825;
+  --color-raised: #272738;
+  --color-raised-hover: #313247;
+  --color-composer: #272738;
+  --color-composer-ring: transparent;
+  --color-card: #1e1e2e;
+  --color-menu: #1e1e2e;
+  --color-inset: #0d0d15;
+  --color-control: #2a2b3d;
+  --color-hairline: #36384e;
+
+  --color-ink: #f2f5fc;
+  --color-ink-secondary: #c1c7df;
+  --color-ink-tertiary: #abb2cb;
+
+  --color-accent: #b48eed;
+  --color-accent-border: #cba6f7;
+  --color-accent-text: #d8bbf9;
+  --color-focus: #d8bbf9;
+  --color-accent-ink: #11111b;
+  --color-bubble-user: #33344b;
+  --color-bubble-user-ink: #f2f5fc;
+
+  --color-success: #92d997;
+  --color-danger: #f38ba8;
+  --color-danger-ink: #20090e;
+  --color-success-ink: #0e1c10;
+  --color-warning: #fab387;
+  --color-scrollbar: #45475a;
+  --color-maus-line: #a6adc8;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --identity-green: #009957;
+  --identity-blue: #377FE6;
+  --identity-red: #D94B52;
+  --identity-orange: #E78531;
+  --identity-purple: #8d69ce;
+  --identity-cyan: #0EA5C6;
+  --identity-pink: #D84F8B;
+  --identity-yellow: #D8A729;
+  --identity-teal: #01A492;
+  --identity-coral: #E5634E;
+}
+
+[data-skin="tokyo"] {
+  --code-color-scheme: dark;
+  --color-app: #16161e;
+  --color-panel: #1a1b26;
+  --color-raised: #282e44;
+  --color-raised-hover: #343c58;
+  --color-composer: #282e44;
+  --color-composer-ring: transparent;
+  --color-card: #1f2335;
+  --color-menu: #1f2335;
+  --color-inset: #121219;
+  --color-control: #2b324a;
+  --color-hairline: #384160;
+
+  --color-ink: #f2f5fc;
+  --color-ink-secondary: #c2cbf0;
+  --color-ink-tertiary: #a2aedd;
+
+  --color-accent: #658fe8;
+  --color-accent-border: #7aa2f7;
+  --color-accent-text: #9dbaff;
+  --color-focus: #7dcfff;
+  --color-accent-ink: #0a1020;
+  --color-bubble-user: #283454;
+  --color-bubble-user-ink: #f2f5fc;
+
+  --color-success: #6bd68e;
+  --color-danger: #f7768e;
+  --color-danger-ink: #240a10;
+  --color-success-ink: #0a1c10;
+  --color-warning: #f59a60;
+  --color-scrollbar: #47527a;
+  --color-maus-line: #a9b1d6;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --identity-green: #009957;
+  --identity-blue: #377FE6;
+  --identity-red: #da5056;
+  --identity-orange: #E78531;
+  --identity-purple: #906dcf;
+  --identity-cyan: #0EA5C6;
+  --identity-pink: #D84F8B;
+  --identity-yellow: #D8A729;
+  --identity-teal: #01A492;
+  --identity-coral: #E5634E;
+}
+
+[data-skin="nordic"] {
+  --code-color-scheme: dark;
+  --color-app: #242933;
+  --color-panel: #2e3440;
+  --color-raised: #3e4757;
+  --color-raised-hover: #495467;
+  --color-composer: #3e4757;
+  --color-composer-ring: transparent;
+  --color-card: #353c4a;
+  --color-menu: #353c4a;
+  --color-inset: #1c2028;
+  --color-control: #3d4656;
+  --color-hairline: #4d596e;
+
+  --color-ink: #f4f7fc;
+  --color-ink-secondary: #d6dde9;
+  --color-ink-tertiary: #c2ccdd;
+
+  --color-accent: #6da3bf;
+  --color-accent-border: #81b5ce;
+  --color-accent-text: #9bd0e8;
+  --color-focus: #88c0d0;
+  --color-accent-ink: #112028;
+  --color-bubble-user: #3d495b;
+  --color-bubble-user-ink: #f4f7fc;
+
+  --color-success: #97c988;
+  --color-danger: #f48891;
+  --color-danger-ink: #260d10;
+  --color-success-ink: #13210f;
+  --color-warning: #ebc472;
+  --color-scrollbar: #57657d;
+  --color-maus-line: #d8dee9;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --identity-green: #00a55e;
+  --identity-blue: #5190e9;
+  --identity-red: #e06b70;
+  --identity-orange: #E78531;
+  --identity-purple: #9f80d5;
+  --identity-cyan: #0EA5C6;
+  --identity-pink: #dd679a;
+  --identity-yellow: #D8A729;
+  --identity-teal: #01A492;
+  --identity-coral: #e66954;
+}
+
+[data-skin="stealth"] {
+  --code-color-scheme: dark;
+  --color-app: #000000;
+  --color-panel: #0c0d10;
+  --color-raised: #1d1f25;
+  --color-raised-hover: #282a32;
+  --color-composer: #1d1f25;
+  --color-composer-ring: transparent;
+  --color-card: #141519;
+  --color-menu: #141519;
+  --color-inset: #060708;
+  --color-control: #202229;
+  --color-hairline: #2b2e37;
+
+  --color-ink: #ffffff;
+  --color-ink-secondary: #bcc0cc;
+  --color-ink-tertiary: #a0a5b4;
+
+  --color-accent: #5e6ad2;
+  --color-accent-border: #7580e0;
+  --color-accent-text: #919cf0;
+  --color-focus: #919cf0;
+  --color-accent-ink: #ffffff;
+  --color-bubble-user: #282b36;
+  --color-bubble-user-ink: #ffffff;
+
+  --color-success: #4ac483;
+  --color-danger: #e85860;
+  --color-danger-ink: #200608;
+  --color-success-ink: #041c0f;
+  --color-warning: #e69940;
+  --color-scrollbar: #3b3e4a;
+  --color-maus-line: #b1b3bc;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --identity-green: #009957;
+  --identity-blue: #377FE6;
+  --identity-red: #D94B52;
+  --identity-orange: #E78531;
+  --identity-purple: #865fca;
+  --identity-cyan: #0EA5C6;
+  --identity-pink: #D84F8B;
+  --identity-yellow: #D8A729;
+  --identity-teal: #01A492;
+  --identity-coral: #E5634E;
+}
+
+[data-skin="groove"] {
+  --code-color-scheme: dark;
+  --color-app: #1d2021;
+  --color-panel: #242626;
+  --color-raised: #393834;
+  --color-raised-hover: #46443e;
+  --color-composer: #393834;
+  --color-composer-ring: transparent;
+  --color-card: #2c2d2b;
+  --color-menu: #2c2d2b;
+  --color-inset: #171818;
+  --color-control: #3a3834;
+  --color-hairline: #4d4a43;
+
+  --color-ink: #fbf1c7;
+  --color-ink-secondary: #d9c9a3;
+  --color-ink-tertiary: #c2b38f;
+
+  --color-accent: #ea7314;
+  --color-accent-border: #fe8019;
+  --color-accent-text: #ffa759;
+  --color-focus: #fabd2f;
+  --color-accent-ink: #210f03;
+  --color-bubble-user: #3c352d;
+  --color-bubble-user-ink: #fbf1c7;
+
+  --color-success: #afb629;
+  --color-danger: #fd634e;
+  --color-danger-ink: #280805;
+  --color-success-ink: #1c1e04;
+  --color-warning: #fabd2f;
+  --color-scrollbar: #5c574f;
+  --color-maus-line: #d5c4a1;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --identity-green: #009b58;
+  --identity-blue: #4186e7;
+  --identity-red: #dd5c62;
+  --identity-orange: #E78531;
+  --identity-purple: #9675d2;
+  --identity-cyan: #0EA5C6;
+  --identity-pink: #da5891;
+  --identity-yellow: #D8A729;
+  --identity-teal: #01A492;
+  --identity-coral: #E5634E;
+}
+
 [data-skin="halloween"] {
   --code-color-scheme: dark;
   --color-app: #110d16;

@@ -13,6 +13,11 @@ const SKIN_CHROME = Object.freeze({
   daylight: Object.freeze({ color: "#fcfcfc", symbolColor: "#575757" }),
   meadow: Object.freeze({ color: "#ffffff", symbolColor: "#4d5a52" }),
   pop: Object.freeze({ color: "#fdf5ea", symbolColor: "#3a322d" }),
+  mocha: Object.freeze({ color: "#11111b", symbolColor: "#c1c7df" }),
+  tokyo: Object.freeze({ color: "#16161e", symbolColor: "#c2cbf0" }),
+  nordic: Object.freeze({ color: "#242933", symbolColor: "#d6dde9" }),
+  stealth: Object.freeze({ color: "#000000", symbolColor: "#bcc0cc" }),
+  groove: Object.freeze({ color: "#1d2021", symbolColor: "#d9c9a3" }),
   halloween: Object.freeze({ color: "#110d16", symbolColor: "#c2b3cc" }),
 });
 

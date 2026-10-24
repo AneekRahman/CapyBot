@@ -42,7 +42,7 @@ describe("useComposerDictation", () => {
     });
 
     const onText = vi.fn();
-    let hookResult: ReturnType<typeof useComposerDictation> | null = null;
+    let hookResult: ReturnType<typeof useComposerDictation> = null!;
 
     function TestComp() {
       hookResult = useComposerDictation({
@@ -101,7 +101,7 @@ describe("useComposerDictation", () => {
     });
 
     const onText = vi.fn();
-    let hookResult: ReturnType<typeof useComposerDictation> | null = null;
+    let hookResult: ReturnType<typeof useComposerDictation> = null!;
 
     function TestComp() {
       hookResult = useComposerDictation({
@@ -155,7 +155,7 @@ describe("useComposerDictation", () => {
     });
 
     const onText = vi.fn();
-    let hookResult: ReturnType<typeof useComposerDictation> | null = null;
+    let hookResult: ReturnType<typeof useComposerDictation> = null!;
 
     function TestComp({ draftId }: { draftId: string }) {
       hookResult = useComposerDictation({

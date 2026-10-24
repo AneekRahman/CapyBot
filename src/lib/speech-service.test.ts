@@ -239,6 +239,7 @@ describe("speechService", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(fetchCalled).toBe(true);
+    expect(fetchBody).toBeDefined();
     expect(transcripts).toEqual([{ text: "Transcribed from ElevenLabs", partial: false }]);
     expect(ends).toEqual([{ code: 0 }]);
     expect(mockTrack.stop).toHaveBeenCalled();
