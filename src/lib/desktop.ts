@@ -34,14 +34,15 @@ let cacheRevision = 0;
 export function initialDesktopCapabilities(): DesktopCapabilities {
   ensureSpeechBridge();
   const speechAvailable = speechService.isAvailable();
+  const serverTranscribe = speechService.isServerTranscribeSupported();
   const webSpeech = speechService.isWebSpeechSupported();
   const platform = typeof window === "undefined" ? undefined : window.ogb?.platform;
   const isMac = platform === "darwin";
   const dictationAvailable = isMac || speechAvailable;
   const dictation: DesktopCapabilities["dictation"] = {
     available: dictationAvailable,
-    engine: isMac ? "apple-speech" : webSpeech ? "web-speech" : "none",
-    onDevice: isMac || webSpeech,
+    engine: isMac ? "apple-speech" : serverTranscribe ? "aws-transcribe" : webSpeech ? "web-speech" : "none",
+    onDevice: isMac,
   };
   if (!dictationAvailable) {
     dictation.reasonCode = platform ? "unsupported-platform" : "desktop-app-required";
@@ -66,13 +67,13 @@ export function initialDesktopCapabilities(): DesktopCapabilities {
 
 export async function loadDesktopCapabilities(): Promise<DesktopCapabilities> {
   if (cached) return cached;
-  if (!window.ogb?.getCapabilities) return browserCapabilities;
+  if (!window.ogb?.getCapabilities) return initialDesktopCapabilities();
   const revisionAtStart = cacheRevision;
   let loaded: DesktopCapabilities;
   try {
     loaded = await window.ogb.getCapabilities();
   } catch {
-    loaded = browserCapabilities;
+    loaded = initialDesktopCapabilities();
   }
   // An IPC push may have delivered newer readiness meanwhile; never let this older response replace it.
   if (cacheRevision !== revisionAtStart && cached) return cached;

@@ -35,6 +35,9 @@ class SpeechService {
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private mediaStream: MediaStream | null = null;
+  private audioContext: any = null;
+  private vadInterval: any = null;
+  private silenceTimer: any = null;
   private nativeDesktop = false;
 
   setNativeDesktop(isNative: boolean) {
@@ -44,9 +47,14 @@ class SpeechService {
   isAvailable(): boolean {
     const g = getGlobal();
     if (this.nativeDesktop && typeof g.ogb?.speechStart === "function") return true;
-    const hasWebSpeech = Boolean(g.SpeechRecognition || g.webkitSpeechRecognition);
     const hasMedia = Boolean(g.navigator?.mediaDevices?.getUserMedia);
-    return hasWebSpeech || hasMedia;
+    const hasWebSpeech = Boolean(g.SpeechRecognition || g.webkitSpeechRecognition);
+    return hasMedia || hasWebSpeech;
+  }
+
+  isServerTranscribeSupported(): boolean {
+    const g = getGlobal();
+    return Boolean(g.navigator?.mediaDevices?.getUserMedia && typeof g.MediaRecorder !== "undefined");
   }
 
   isWebSpeechSupported(): boolean {
@@ -102,13 +110,24 @@ class SpeechService {
     this.lastPartialText = "";
     this.accumulatedFinalText = "";
 
-    const SpeechRec = g.SpeechRecognition || g.webkitSpeechRecognition;
+    // 1. Primary option: Server-backed /api/speech/transcribe via MediaRecorder
+    if (this.isServerTranscribeSupported()) {
+      try {
+        await this.startMediaRecorder(options);
+        return;
+      } catch (err) {
+        console.warn("MediaRecorder start failed, falling back to Web Speech API:", err);
+      }
+    }
 
+    // 2. Fallback option: Native browser Web Speech API
+    const SpeechRec = g.SpeechRecognition || g.webkitSpeechRecognition;
     if (SpeechRec) {
       return this.startWebSpeech(SpeechRec, options);
     }
 
-    return this.startMediaRecorder(options);
+    this.active = false;
+    throw new Error("No speech recognition engine available in this browser.");
   }
 
   private startWebSpeech(SpeechRec: new () => any, options?: SpeechServiceOptions): Promise<void> {
@@ -212,7 +231,24 @@ class SpeechService {
     });
   }
 
-  private async startMediaRecorder(_options?: SpeechServiceOptions): Promise<void> {
+  private clearVad(): void {
+    if (this.vadInterval) {
+      clearInterval(this.vadInterval);
+      this.vadInterval = null;
+    }
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+    if (this.audioContext) {
+      try {
+        this.audioContext.close();
+      } catch {}
+      this.audioContext = null;
+    }
+  }
+
+  private async startMediaRecorder(options?: SpeechServiceOptions): Promise<void> {
     const g = getGlobal();
     if (!g.navigator?.mediaDevices?.getUserMedia) {
       throw new Error("Microphone access is not supported in this browser.");
@@ -224,11 +260,58 @@ class SpeechService {
     const recorder = new MediaRecorder(stream);
     this.mediaRecorder = recorder;
 
+    const AudioCtx = g.AudioContext || g.webkitAudioContext;
+    if (typeof AudioCtx === "function" && options?.endpointMs) {
+      try {
+        const audioContext = new AudioCtx();
+        this.audioContext = audioContext;
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        let hasSpoken = false;
+
+        this.vadInterval = setInterval(() => {
+          if (!this.active || !this.mediaRecorder) {
+            this.clearVad();
+            return;
+          }
+          analyser.getByteTimeDomainData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const v = (dataArray[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / dataArray.length);
+          if (rms > 0.025) {
+            hasSpoken = true;
+            if (this.silenceTimer) {
+              clearTimeout(this.silenceTimer);
+              this.silenceTimer = null;
+            }
+          } else if (hasSpoken) {
+            if (!this.silenceTimer) {
+              this.silenceTimer = setTimeout(() => {
+                if (this.active) {
+                  this.stop().catch(() => {});
+                }
+              }, options.endpointMs);
+            }
+          }
+        }, 80);
+      } catch {
+        // Fallback gracefully without VAD if AudioContext fails
+      }
+    }
+
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) this.audioChunks.push(e.data);
     };
 
     recorder.onstop = async () => {
+      this.clearVad();
       const audioBlob = new Blob(this.audioChunks, { type: recorder.mimeType || "audio/webm" });
       this.audioChunks = [];
       if (this.mediaStream) {
@@ -271,6 +354,7 @@ class SpeechService {
       return g.ogb.speechStop();
     }
     this.active = false;
+    this.clearVad();
     if (this.endpointTimer) {
       clearTimeout(this.endpointTimer);
       this.endpointTimer = null;

@@ -24,6 +24,38 @@ describe("speechService", () => {
     expect(speechService.isWebSpeechSupported()).toBe(true);
   });
 
+  it("reports server transcribe availability when MediaRecorder is present", () => {
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: vi.fn() } });
+    vi.stubGlobal("MediaRecorder", vi.fn());
+    expect(speechService.isServerTranscribeSupported()).toBe(true);
+    expect(speechService.isAvailable()).toBe(true);
+  });
+
+  it("prioritizes MediaRecorder when available and falls back to Web Speech", async () => {
+    const mockGetUserMedia = vi.fn().mockRejectedValue(new Error("mic blocked"));
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: mockGetUserMedia } });
+
+    let startedWebSpeech = false;
+    class MockFallbackRecognition {
+      continuous = false;
+      interimResults = false;
+      onstart = () => {};
+      start() {
+        startedWebSpeech = true;
+        setTimeout(() => this.onstart(), 0);
+      }
+      stop() {}
+    }
+
+    vi.stubGlobal("SpeechRecognition", MockFallbackRecognition);
+    vi.stubGlobal("MediaRecorder", vi.fn());
+
+    await speechService.start();
+
+    expect(mockGetUserMedia).toHaveBeenCalled();
+    expect(startedWebSpeech).toBe(true);
+  });
+
   it("polyfills window.ogb speech APIs when absent", () => {
     const fakeWindow: any = {};
     vi.stubGlobal("window", fakeWindow);

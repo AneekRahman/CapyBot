@@ -21,6 +21,59 @@ export async function readAudioBody(req: IncomingMessage, limit = MAX_AUDIO_BYTE
   return Buffer.concat(chunks);
 }
 
+export async function defaultTranscribe(buffer: Buffer, mimeType: string): Promise<string> {
+  // 1. ElevenLabs Speech-to-Text (Scribe)
+  const elevenKey = process.env.ELEVENLABS_API_KEY;
+  if (elevenKey) {
+    const form = new FormData();
+    const blob = new Blob([buffer as any], { type: mimeType });
+    form.append("file", blob, "audio.webm");
+    form.append("model_id", "scribe_v1");
+
+    const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      method: "POST",
+      headers: {
+        "xi-api-key": elevenKey,
+      },
+      body: form,
+      signal: AbortSignal.timeout(25000),
+    });
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as Record<string, any>;
+      throw new Error(body?.detail?.message || body?.message || `ElevenLabs STT returned ${res.status}`);
+    }
+
+    const data = (await res.json()) as { text?: string };
+    return data.text || "";
+  }
+
+  // 2. Groq Whisper (free & fast if configured)
+  const groqKey = process.env.GROQ_API_KEY;
+  if (groqKey) {
+    const form = new FormData();
+    const blob = new Blob([buffer as any], { type: mimeType });
+    form.append("file", blob, "audio.webm");
+    form.append("model", "whisper-large-v3");
+
+    const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${groqKey}`,
+      },
+      body: form,
+      signal: AbortSignal.timeout(25000),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as { text?: string };
+      return data.text || "";
+    }
+  }
+
+  throw new Error("transcribe_unconfigured");
+}
+
 export function createSpeechRoutes(deps: SpeechTranscribeDeps = {}): RouteHandler {
   return async ({ req, res, path, method, json }: RouteContext) => {
     if (path !== "/api/speech/transcribe") return PASS;
@@ -50,14 +103,20 @@ export function createSpeechRoutes(deps: SpeechTranscribeDeps = {}): RouteHandle
         return json(res, 200, { text });
       }
 
-      // Default handler when no transcribe backend is configured
-      // Clients use Web Speech API in browser; this fallback endpoint is active when AWS STT is wired
-      return json(res, 501, {
-        error: {
-          code: "transcribe_unconfigured",
-          message: "AWS Transcribe backend is not configured on this host. Use browser speech recognition or configure AWS Transcribe.",
-        },
-      });
+      try {
+        const text = await defaultTranscribe(audioBuffer, contentType);
+        return json(res, 200, { text });
+      } catch (sttErr: unknown) {
+        if (sttErr instanceof Error && sttErr.message === "transcribe_unconfigured") {
+          return json(res, 501, {
+            error: {
+              code: "transcribe_unconfigured",
+              message: "Server transcription is not configured. Configure AWS Transcribe or ElevenLabs in environment/settings. Browser Web Speech fallback is available.",
+            },
+          });
+        }
+        throw sttErr;
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Transcription failed";
       return json(res, 500, { error: { code: "transcribe_failed", message } });
