@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
-import { api } from "@/state/store";
+import { api, useStore } from "@/state/store";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import { Card } from "./SettingsPrimitives";
+import { PresetProviderMark } from "./ProviderIcons";
+import type { ProviderIconPreset } from "../../shared/provider-icon";
+
+const DRIVER_PRESETS: Record<string, ProviderIconPreset> = {
+  claude: "anthropic",
+  codex: "openai",
+  grok: "xai",
+  antigravity: "google",
+};
 
 interface PlanWindow {
   available: boolean;
@@ -30,6 +39,7 @@ interface PlanProvider {
   driver: string;
   plan: string | null;
   ok: boolean;
+  authenticated?: boolean;
   error: string | null;
   fiveHour: PlanWindow;
   weekly: PlanWindow;
@@ -99,6 +109,21 @@ function providerError(provider: Pick<PlanProvider, "error">): string | null {
   if (!message) return null;
   const signIn = /^Sign in again in (.+)$/i.exec(message);
   return signIn ? t("planUsage.signInAgain", { provider: providerLabel({ name: signIn[1]! }) }) : message;
+}
+
+function isSignedOut(
+  provider: PlanProvider,
+  instances?: readonly { instanceId: string; snapshot?: { state?: string; authenticated?: boolean } }[],
+): boolean {
+  if (provider.authenticated === false) return true;
+  if (!provider.ok && provider.error) {
+    if (/^Sign in again in /i.test(provider.error)) return true;
+  }
+  const matching = instances?.find((inst) => inst.instanceId === provider.id);
+  if (matching?.snapshot?.state === "available" && matching.snapshot.authenticated === false) {
+    return true;
+  }
+  return false;
 }
 
 function WindowRow({
@@ -182,6 +207,14 @@ export function PlanUsage() {
     void load(true);
   }, [report, now, load]);
 
+  let storeState: { instances?: readonly { instanceId: string; snapshot?: { state?: string; authenticated?: boolean } }[] } | undefined;
+  try {
+    storeState = useStore()?.state;
+  } catch {
+    storeState = undefined;
+  }
+  const visibleProviders = (report?.providers ?? []).filter((p) => !isSignedOut(p, storeState?.instances));
+
   return (
     <Card title={t("planUsage.title")} subtitle={t("planUsage.subtitle")}>
       <div className="mb-3 flex justify-end">
@@ -198,64 +231,72 @@ export function PlanUsage() {
       </div>
       {loading && !report && <p role="status" className="text-[13px] text-ink-secondary">{t("planUsage.loading")}</p>}
       {error && <p role="alert" className="mb-3 text-[13px] text-danger">{error}</p>}
-      {report && report.providers.length === 0 && (
+      {report && visibleProviders.length === 0 && (
         <p className="text-[13px] text-ink-secondary">{t("planUsage.empty")}</p>
       )}
-      {report && report.providers.length > 0 && (
+      {report && visibleProviders.length > 0 && (
         <div className="flex flex-col gap-4">
-          {report.providers.map((provider) => (
-            <div key={provider.id} className="border-t border-hairline/30 pt-3 first:border-t-0 first:pt-0">
-              <div className="mb-2 flex min-w-0 items-baseline gap-2">
-                <span className="truncate text-[14px] font-medium text-ink">{providerLabel(provider)}</span>
-                {provider.plan && <span className="truncate text-[12px] text-ink-secondary">{provider.plan}</span>}
-              </div>
-              {provider.ok ? (
-                <div className="flex flex-col gap-2">
-                  <WindowRow label={t("planUsage.fiveHour")} window={provider.fiveHour} now={now} />
-                  <WindowRow label={t("planUsage.weekly")} window={provider.weekly} now={now} />
-                  {provider.extra.map((extra, index) => (
-                    <WindowRow
-                      key={`${extra.label}-${index}`}
-                      label={windowLabel(extra.label)}
-                      now={now}
-                      window={{
-                        available: true,
-                        remainingPercent: extra.remainingPercent,
-                        usedPercent: extra.usedPercent,
-                        resetsAt: extra.resetsAt,
-                      }}
-                    />
-                  ))}
-                  {(provider.models ?? []).length > 0 && (
-                    <div className="mt-1 flex flex-col gap-2">
-                      <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">{t("planUsage.byModel")}</div>
-                      {(provider.models ?? []).map((model) => (
-                        <div key={model.name} className="flex flex-col gap-1">
-                          <div className="truncate text-[13px] font-medium text-ink">{model.name}</div>
-                          {model.windows.map((entry, index) => (
-                            <WindowRow
-                              key={`${model.name}-${entry.label}-${index}`}
-                              label={windowLabel(entry.label)}
-                              now={now}
-                              usedHeadline
-                              window={{
-                                available: true,
-                                remainingPercent: entry.remainingPercent,
-                                usedPercent: entry.usedPercent,
-                                resetsAt: entry.resetsAt,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      ))}
-                    </div>
+          {visibleProviders.map((provider) => {
+            const iconPreset = DRIVER_PRESETS[provider.driver];
+            return (
+              <div key={provider.id} className="border-t border-hairline/30 pt-3 first:border-t-0 first:pt-0" data-testid={`plan-provider-${provider.id}`}>
+                <div className="mb-2 flex min-w-0 items-center gap-2">
+                  {iconPreset && <PresetProviderMark preset={iconPreset} size={15} className="shrink-0" />}
+                  <span className="truncate text-[14px] font-medium text-ink">{providerLabel(provider)}</span>
+                  {provider.plan && (
+                    <span className="truncate rounded bg-raised px-1.5 py-0.5 text-[11px] font-medium text-ink-secondary">
+                      {provider.plan}
+                    </span>
                   )}
                 </div>
-              ) : (
-                <p className="text-[13px] text-danger">{providerError(provider)}</p>
-              )}
-            </div>
-          ))}
+                {provider.ok ? (
+                  <div className="flex flex-col gap-2">
+                    <WindowRow label={t("planUsage.fiveHour")} window={provider.fiveHour} now={now} />
+                    <WindowRow label={t("planUsage.weekly")} window={provider.weekly} now={now} />
+                    {provider.extra.map((extra, index) => (
+                      <WindowRow
+                        key={`${extra.label}-${index}`}
+                        label={windowLabel(extra.label)}
+                        now={now}
+                        window={{
+                          available: true,
+                          remainingPercent: extra.remainingPercent,
+                          usedPercent: extra.usedPercent,
+                          resetsAt: extra.resetsAt,
+                        }}
+                      />
+                    ))}
+                    {(provider.models ?? []).length > 0 && (
+                      <div className="mt-1 flex flex-col gap-2">
+                        <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-ink-secondary">{t("planUsage.byModel")}</div>
+                        {(provider.models ?? []).map((model) => (
+                          <div key={model.name} className="flex flex-col gap-1">
+                            <div className="truncate text-[13px] font-medium text-ink">{model.name}</div>
+                            {model.windows.map((entry, index) => (
+                              <WindowRow
+                                key={`${model.name}-${entry.label}-${index}`}
+                                label={windowLabel(entry.label)}
+                                now={now}
+                                usedHeadline
+                                window={{
+                                  available: true,
+                                  remainingPercent: entry.remainingPercent,
+                                  usedPercent: entry.usedPercent,
+                                  resetsAt: entry.resetsAt,
+                                }}
+                              />
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[13px] text-danger">{providerError(provider)}</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </Card>

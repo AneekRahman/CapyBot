@@ -7,6 +7,7 @@ import {
   fetchPlanUsage,
   fileCredentialReader,
   loadPlanUsage,
+  parseAntigravityUsage,
   parseClaudeUsage,
   parseCodexUsage,
   parseGrokUsage,
@@ -34,7 +35,7 @@ function jsonResponse(body: unknown, status = 200): PlanResponse {
 function account(driver: PlanAccount["driver"], extras: Partial<PlanAccount> = {}): PlanAccount {
   return {
     id: driver,
-    name: driver === "claude" ? "Claude" : driver === "codex" ? "Codex" : "Grok",
+    name: driver === "claude" ? "Claude" : driver === "codex" ? "Codex" : driver === "grok" ? "Grok" : "Google Gemini",
     driver,
     environment: {},
     ...extras,
@@ -183,6 +184,48 @@ describe("plan usage parsers", () => {
       { name: "Grok Chat", windows: [expect.objectContaining({ label: "Weekly", usedPercent: 2, remainingPercent: 98 })] },
     ]);
     expect(JSON.stringify(parsed)).not.toContain(SECRET);
+  });
+
+  it("parses Google Gemini Antigravity quota buckets, tier, and model groups", () => {
+    const parsed = parseAntigravityUsage({
+      tier: "g1-pro-tier",
+      groups: [
+        {
+          id: "gemini-models",
+          name: "Gemini Models",
+          buckets: [
+            { window: "5h", remainingFraction: 0.85, resetTime: "2026-10-24T06:00:00.000Z" },
+            { window: "weekly", remainingFraction: 0.62, resetTime: "2026-10-31T00:00:00.000Z" },
+          ],
+        },
+        {
+          id: "third-party-models",
+          name: "Claude and GPT models",
+          buckets: [
+            { window: "5h", remainingFraction: 0.20, resetTime: "2026-10-24T05:00:00.000Z" },
+          ],
+        },
+      ],
+    });
+    expect(parsed.plan).toBe("Google AI Pro");
+    expect(parsed.fiveHour).toMatchObject({
+      available: true,
+      remainingPercent: 85,
+      usedPercent: 15,
+      resetsAt: "2026-10-24T06:00:00.000Z",
+    });
+    expect(parsed.weekly).toMatchObject({
+      available: true,
+      remainingPercent: 62,
+      usedPercent: 38,
+      resetsAt: "2026-10-31T00:00:00.000Z",
+    });
+    expect(parsed.models).toEqual([
+      {
+        name: "Claude and GPT models",
+        windows: [expect.objectContaining({ label: "5-hour", remainingPercent: 20, usedPercent: 80 })],
+      },
+    ]);
   });
 });
 
@@ -404,17 +447,108 @@ describe("plan usage fetcher", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("lists configured Claude, Codex, and Grok accounts and skips other engines", () => {
+  it("reads Antigravity refresh credentials and exchanges token before fetching quota", async () => {
+    const accessToken = "antigravity-exchanged-access";
+    const refreshToken = "antigravity-fixture-refresh";
+    const clientId = "client-123";
+    const clientSecret = "secret-456";
+
+    const fetchImpl = vi.fn<PlanFetch>(async (url) => {
+      if (url.includes("oauth2.googleapis.com")) {
+        return jsonResponse({ access_token: accessToken });
+      }
+      return jsonResponse({
+        tier: "PRO_TIER",
+        groups: [
+          {
+            id: "gemini-models",
+            buckets: [
+              { window: "5h", remainingFraction: 0.9, resetTime: "2026-10-24T06:00:00.000Z" },
+              { window: "weekly", remainingFraction: 0.75, resetTime: "2026-10-31T00:00:00.000Z" },
+            ],
+          },
+        ],
+      });
+    });
+
+    const report = await fetchPlanUsage([account("antigravity")], {
+      fetch: fetchImpl,
+      now: () => NOW,
+      credentials: fileCredentialReader({
+        now: () => NOW,
+        env: { HOME: tmpdir(), USERPROFILE: tmpdir() },
+        readText: () => JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+        }),
+      }),
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://oauth2.googleapis.com/token");
+    expect(fetchImpl.mock.calls[1]?.[0]).toContain("retrieveUserQuotaSummary");
+    expect(fetchImpl.mock.calls[1]?.[1].headers.Authorization).toBe(`Bearer ${accessToken}`);
+    expect(report.providers[0]).toMatchObject({
+      ok: true,
+      authenticated: true,
+      driver: "antigravity",
+      plan: "Google AI Pro",
+      fiveHour: { remainingPercent: 90, usedPercent: 10 },
+      weekly: { remainingPercent: 75, usedPercent: 25 },
+    });
+  });
+
+  it("handles missing Antigravity credentials without network calls and marks authenticated: false", async () => {
+    const fetchImpl = vi.fn<PlanFetch>();
+    const report = await fetchPlanUsage([account("antigravity")], {
+      fetch: fetchImpl,
+      now: () => NOW,
+      credentials: fileCredentialReader({
+        now: () => NOW,
+        env: { HOME: tmpdir(), USERPROFILE: tmpdir() },
+        readText: () => null,
+      }),
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(report.providers[0]).toMatchObject({
+      ok: false,
+      authenticated: false,
+      error: "Sign in again in Google Gemini",
+    });
+  });
+
+  it("turns Antigravity 401 into authenticated: false errorRow", async () => {
+    const fetchImpl = vi.fn<PlanFetch>(async () => jsonResponse("Unauthorized", 401));
+    const report = await fetchPlanUsage([account("antigravity")], {
+      fetch: fetchImpl,
+      now: () => NOW,
+      credentials: {
+        read: () => ({ token: "expired-token", accountId: null, expired: false }),
+      },
+    });
+    expect(report.providers[0]).toMatchObject({
+      ok: false,
+      authenticated: false,
+      error: "Sign in again in Google Gemini",
+    });
+  });
+
+  it("lists configured Claude, Codex, Grok, and Antigravity accounts and skips other engines", () => {
     expect(planAccountsFromInstances({
       claude: { driver: "claudeAgent", displayName: "  Personal Claude  ", config: { configDir: "/tmp/claude" } },
       codex: { driver: "codex" },
       grok: { driver: "grokAgent", environment: { GROK_HOME: "/tmp/grok" } },
+      antigravity: { driver: "antigravityAgent", displayName: "Google Gemini (Antigravity)" },
+      "antigravity-work": { driver: "antigravityAgent", displayName: "Work Gemini" },
       cursor: { driver: "cursorAgent", displayName: "Cursor" },
       api: { driver: "grok", displayName: "Grok API" },
     })).toEqual([
       { id: "claude", name: "Personal Claude", driver: "claude", environment: {}, configDir: "/tmp/claude" },
       { id: "codex", name: "Codex", driver: "codex", environment: {} },
       { id: "grok", name: "Grok", driver: "grok", environment: { GROK_HOME: "/tmp/grok" } },
+      { id: "antigravity", name: "Google Gemini (Antigravity)", driver: "antigravity", environment: {} },
+      { id: "antigravity-work", name: "Work Gemini", driver: "antigravity", environment: {} },
     ]);
   });
 });

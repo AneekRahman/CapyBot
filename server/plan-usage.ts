@@ -4,11 +4,12 @@ import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { InstanceConfigMap } from "./contracts.ts";
+import { antigravityProfileDirectory } from "./drivers/antigravity-acp.ts";
 import { resolveClaudeConfigDir } from "./drivers/claude.ts";
 import { codexHome } from "./drivers/codex-identity.ts";
 import { harnessHome, sealedFixture } from "./env-path.ts";
 
-export type PlanDriver = "claude" | "codex" | "grok";
+export type PlanDriver = "claude" | "codex" | "grok" | "antigravity";
 
 export interface PlanWindow {
   available: boolean;
@@ -43,6 +44,7 @@ export interface PlanProviderRow {
   driver: string;
   plan: string | null;
   ok: boolean;
+  authenticated?: boolean;
   error: string | null;
   fiveHour: PlanWindow;
   weekly: PlanWindow;
@@ -81,7 +83,7 @@ export interface PlanResponse {
 
 export type PlanFetch = (
   url: string,
-  init: { headers: Record<string, string>; signal: AbortSignal },
+  init: { headers: Record<string, string>; signal: AbortSignal; method?: string; body?: string },
 ) => Promise<PlanResponse>;
 
 export interface PlanUsageDeps {
@@ -111,6 +113,8 @@ const CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 const GROK_CREDITS_URL = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
 const GROK_BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing";
 const GROK_SETTINGS_URL = "https://cli-chat-proxy.grok.com/v1/settings";
+const ANTIGRAVITY_USAGE_URL = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary";
+const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 const FIVE_HOUR_MIN_SECONDS = 3 * 3600;
 const FIVE_HOUR_MAX_SECONDS = 8 * 3600;
@@ -123,12 +127,14 @@ const DRIVER_OF: Record<string, PlanDriver> = {
   claudeAgent: "claude",
   codex: "codex",
   grokAgent: "grok",
+  antigravityAgent: "antigravity",
 };
 
 const PRODUCT_NAME: Record<PlanDriver, string> = {
   claude: "Claude",
   codex: "Codex",
   grok: "Grok",
+  antigravity: "Google Gemini",
 };
 
 export function planAccountsFromInstances(instances: InstanceConfigMap): PlanAccount[] {
@@ -215,6 +221,86 @@ export function parseGrokUsage(credits: unknown, billing?: unknown, settings?: u
   return { plan: grokPlan(settings), fiveHour, weekly, extra, models };
 }
 
+export function parseAntigravityUsage(body: unknown): PlanWindows {
+  const root = asRecord(body);
+  const models: PlanModelUsage[] = [];
+  const extra: PlanExtra[] = [];
+  let fiveHour = closedWindow();
+  let weekly = closedWindow();
+  let plan = planLabel(root?.tier ?? root?.plan ?? root?.plan_type ?? root?.planName);
+  if (plan) {
+    if (plan === "g1-pro-tier" || plan === "PRO_TIER") plan = "Google AI Pro";
+    else if (plan === "g1-ultra-tier" || plan === "ULTRA_TIER") plan = "Google AI Ultra";
+    else if (plan === "standard-tier" || plan === "FREE_TIER") plan = "Google AI Free";
+  }
+
+  const groups = Array.isArray(root?.groups) ? root.groups : [];
+  for (let i = 0; i < groups.length; i++) {
+    const group = asRecord(groups[i]);
+    if (!group) continue;
+    const rawId = typeof group.id === "string" ? group.id : "";
+    const rawName = typeof group.name === "string" ? group.name : "";
+    const isPrimary = i === 0 || rawId === "gemini-models" || /gemini/i.test(rawName);
+    const buckets = Array.isArray(group.buckets) ? group.buckets : [];
+
+    for (const item of buckets) {
+      const bucket = asRecord(item);
+      if (!bucket) continue;
+      const windowStr = typeof bucket.window === "string" ? bucket.window.toLowerCase() : "";
+      const remainingFrac = finiteNumber(bucket.remainingFraction);
+      let usedPercent: number | null = null;
+      if (remainingFrac != null) {
+        usedPercent = clampPercent(Math.round((1 - remainingFrac) * 10_000) / 100);
+      } else {
+        const rawUsed = finiteNumber(bucket.usedPercent ?? bucket.used_percent);
+        if (rawUsed != null) usedPercent = clampPercent(rawUsed);
+        else {
+          const rawRemaining = finiteNumber(bucket.remainingPercent ?? bucket.remaining_percent);
+          if (rawRemaining != null) usedPercent = clampPercent(100 - rawRemaining);
+        }
+      }
+      if (usedPercent == null) continue;
+      const resetsAt = isoOrNull(bucket.resetTime ?? bucket.resetsAt ?? bucket.reset_time ?? bucket.reset_at);
+      const open = openWindow(usedPercent, resetsAt);
+      const isFiveHour = windowStr === "5h" || windowStr === "5-hour" || windowStr === "five_hour";
+      const isWeekly = windowStr === "weekly" || windowStr === "7d" || windowStr === "seven_day" || windowStr === "1w";
+
+      if (isPrimary) {
+        if (isFiveHour && !fiveHour.available) {
+          fiveHour = open;
+        } else if (isWeekly && !weekly.available) {
+          weekly = open;
+        } else {
+          extra.push(extraLine(isFiveHour ? "5-hour" : isWeekly ? "Weekly" : titleWords(windowStr || "Quota"), open));
+        }
+      } else {
+        const modelLabel = isFiveHour ? "5-hour" : isWeekly ? "Weekly" : titleWords(windowStr || "Quota");
+        addModelWindow(models, rawName || rawId || "Model Group", extraLine(modelLabel, open));
+      }
+    }
+  }
+
+  if (!fiveHour.available && !weekly.available) {
+    const directBuckets = Array.isArray(root?.buckets) ? root.buckets : [];
+    for (const item of directBuckets) {
+      const bucket = asRecord(item);
+      if (!bucket) continue;
+      const windowStr = typeof bucket.window === "string" ? bucket.window.toLowerCase() : "";
+      const remainingFrac = finiteNumber(bucket.remainingFraction);
+      const usedPercent = remainingFrac != null ? clampPercent(Math.round((1 - remainingFrac) * 10_000) / 100) : finiteNumber(bucket.usedPercent);
+      if (usedPercent == null) continue;
+      const resetsAt = isoOrNull(bucket.resetTime ?? bucket.resetsAt);
+      const open = openWindow(usedPercent, resetsAt);
+      if ((windowStr === "5h" || windowStr === "5-hour") && !fiveHour.available) fiveHour = open;
+      else if ((windowStr === "weekly" || windowStr === "7d") && !weekly.available) weekly = open;
+      else extra.push(extraLine(titleWords(windowStr || "Quota"), open));
+    }
+  }
+
+  sortModelWindows(models);
+  return { plan, fiveHour, weekly, extra, models };
+}
+
 export function fileCredentialReader(source: CredentialSource): CredentialReader {
   const env = source.env ?? process.env;
   const now = source.now ?? Date.now;
@@ -224,7 +310,8 @@ export function fileCredentialReader(source: CredentialSource): CredentialReader
       const at = now();
       if (account.driver === "claude") return readClaudeCredential(account, merged, source, at);
       if (account.driver === "codex") return readCodexCredential(merged, source.readText, at);
-      return readGrokCredential(merged, source.readText, at);
+      if (account.driver === "grok") return readGrokCredential(merged, source.readText, at);
+      return readAntigravityCredential(account, merged, source.readText, at);
     },
   };
 }
@@ -755,13 +842,70 @@ function readGrokCredential(
   return sawExpired ? expiredCredential() : missingCredential();
 }
 
-function errorRow(account: PlanAccount, error: string): PlanProviderRow {
+function readAntigravityCredential(
+  account: PlanAccount,
+  env: NodeJS.ProcessEnv,
+  readText: (path: string) => string | null,
+  now: number,
+): PlanCredential {
+  const home = env.HOME?.trim() || env.USERPROFILE?.trim() || "";
+  const baseDir = env.OMB_DATA_DIR?.trim() || env.DATA_DIR?.trim() || (home ? join(home, ".openmausbot") : "");
+  const profileDir = account.configDir?.trim() ||
+    account.environment.GEMINI_HOME?.trim() ||
+    (baseDir ? antigravityProfileDirectory(account.id, baseDir) : "");
+
+  const paths = [
+    profileDir ? join(profileDir, "antigravity-acp", "acp_token.json") : "",
+    profileDir ? join(profileDir, "acp_token.json") : "",
+    account.environment.GEMINI_HOME?.trim() ? join(account.environment.GEMINI_HOME.trim(), "antigravity-acp", "acp_token.json") : "",
+    env.GEMINI_HOME?.trim() ? join(env.GEMINI_HOME.trim(), "antigravity-acp", "acp_token.json") : "",
+  ].filter(Boolean);
+
+  let raw: string | null = null;
+  for (const path of paths) {
+    raw = readText(path);
+    if (raw) break;
+  }
+  if (!raw) return missingCredential();
+  const parsed = asRecord(parseJson(raw));
+  if (!parsed) return missingCredential();
+
+  const directToken = secretString(parsed.access_token) ?? secretString(parsed.token);
+  if (directToken) {
+    const expiry = timeMs(parsed.expires_at ?? parsed.expiresAt ?? parsed.expiry);
+    if (expiry != null && expiry <= now) return expiredCredential();
+    return { token: directToken, accountId: null, expired: false };
+  }
+
+  const refreshToken = secretString(parsed.refresh_token);
+  const clientId = secretString(parsed.client_id);
+  const clientSecret = secretString(parsed.client_secret);
+  if (refreshToken && clientId && clientSecret) {
+    return {
+      token: JSON.stringify({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken }),
+      accountId: null,
+      expired: false,
+    };
+  }
+  if (refreshToken) {
+    return {
+      token: JSON.stringify({ refresh_token: refreshToken }),
+      accountId: null,
+      expired: false,
+    };
+  }
+
+  return missingCredential();
+}
+
+function errorRow(account: PlanAccount, error: string, authenticated = true): PlanProviderRow {
   return {
     id: account.id,
     name: account.name,
     driver: account.driver,
     plan: null,
     ok: false,
+    authenticated,
     error,
     fiveHour: closedWindow(),
     weekly: closedWindow(),
@@ -777,6 +921,7 @@ function okRow(account: PlanAccount, windows: PlanWindows): PlanProviderRow {
     driver: account.driver,
     plan: windows.plan,
     ok: true,
+    authenticated: true,
     error: null,
     fiveHour: windows.fiveHour,
     weekly: windows.weekly,
@@ -790,15 +935,16 @@ async function fetchProvider(account: PlanAccount, deps: PlanUsageDeps): Promise
   try {
     credential = await deps.credentials.read(account);
   } catch {
-    return errorRow(account, signInAgain(account.driver));
+    return errorRow(account, signInAgain(account.driver), false);
   }
-  if (credential.expired || !credential.token) return errorRow(account, signInAgain(account.driver));
+  if (credential.expired || !credential.token) return errorRow(account, signInAgain(account.driver), false);
   try {
     if (account.driver === "claude") return await fetchClaude(account, credential.token, deps);
     if (account.driver === "codex") return await fetchCodex(account, credential.token, credential.accountId, deps);
-    return await fetchGrok(account, credential.token, deps);
+    if (account.driver === "grok") return await fetchGrok(account, credential.token, deps);
+    return await fetchAntigravity(account, credential.token, deps);
   } catch {
-    return errorRow(account, couldNotReach(account.driver));
+    return errorRow(account, couldNotReach(account.driver), true);
   }
 }
 
@@ -813,24 +959,32 @@ async function fetchJson(
   url: string,
   headers: Record<string, string>,
   timeoutMs: number,
+  method = "GET",
+  body?: string,
 ): Promise<HttpResult> {
   try {
-    const response = await fetchImpl(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
+    const init: { headers: Record<string, string>; signal: AbortSignal; method?: string; body?: string } = {
+      headers,
+      signal: AbortSignal.timeout(timeoutMs),
+    };
+    if (method !== "GET") init.method = method;
+    if (body !== undefined) init.body = body;
+    const response = await fetchImpl(url, init);
     let text = "";
     try {
       text = await response.text();
     } catch {
       text = "";
     }
-    let body: unknown = null;
+    let parsedBody: unknown = null;
     if (text.trim()) {
       try {
-        body = JSON.parse(text) as unknown;
+        parsedBody = JSON.parse(text) as unknown;
       } catch {
-        body = null;
+        parsedBody = null;
       }
     }
-    return { status: response.status, ok: response.ok, body };
+    return { status: response.status, ok: response.ok, body: parsedBody };
   } catch {
     return { status: 0, ok: false, body: null };
   }
@@ -846,9 +1000,9 @@ async function fetchClaude(account: PlanAccount, token: string, deps: PlanUsageD
     Accept: "application/json",
     "anthropic-beta": "oauth-2025-04-20",
   }, deps.timeoutMs ?? PROVIDER_TIMEOUT_MS);
-  if (authRejected(result.status)) return errorRow(account, signInAgain("claude"));
+  if (authRejected(result.status)) return errorRow(account, signInAgain("claude"), false);
   if (!result.ok || result.body === null || typeof result.body !== "object") {
-    return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("claude") : unexpectedUsage("claude"));
+    return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("claude") : unexpectedUsage("claude"), true);
   }
   return okRow(account, parseClaudeUsage(result.body));
 }
@@ -865,9 +1019,9 @@ async function fetchCodex(
   };
   if (accountId) headers["ChatGPT-Account-Id"] = accountId;
   const result = await fetchJson(deps.fetch, CODEX_USAGE_URL, headers, deps.timeoutMs ?? PROVIDER_TIMEOUT_MS);
-  if (authRejected(result.status)) return errorRow(account, signInAgain("codex"));
+  if (authRejected(result.status)) return errorRow(account, signInAgain("codex"), false);
   if (!result.ok || result.body === null || typeof result.body !== "object") {
-    return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("codex") : unexpectedUsage("codex"));
+    return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("codex") : unexpectedUsage("codex"), true);
   }
   return okRow(account, parseCodexUsage(result.body));
 }
@@ -885,15 +1039,69 @@ async function fetchGrok(account: PlanAccount, token: string, deps: PlanUsageDep
     fetchJson(deps.fetch, GROK_SETTINGS_URL, headers, timeout),
   ]);
   if (authRejected(credits.status) || (authRejected(billing.status) && !credits.ok)) {
-    return errorRow(account, signInAgain("grok"));
+    return errorRow(account, signInAgain("grok"), false);
   }
   const creditsBody = credits.ok ? credits.body : null;
   const billingBody = billing.ok && !authRejected(billing.status) ? billing.body : null;
   if (creditsBody === null && billingBody === null) {
     return errorRow(account, credits.status === 0 || credits.status >= 500 || billing.status === 0 || billing.status >= 500
       ? couldNotReach("grok")
-      : unexpectedUsage("grok"));
+      : unexpectedUsage("grok"), true);
   }
   const windows = parseGrokUsage(creditsBody, billingBody ?? undefined, settings.ok ? settings.body : undefined);
   return okRow(account, windows);
+}
+
+async function fetchAntigravity(
+  account: PlanAccount,
+  tokenOrCreds: string,
+  deps: PlanUsageDeps,
+): Promise<PlanProviderRow> {
+  let bearerToken = tokenOrCreds.trim();
+  if (bearerToken.startsWith("{")) {
+    const creds = asRecord(parseJson(bearerToken));
+    const clientId = secretString(creds?.client_id);
+    const clientSecret = secretString(creds?.client_secret);
+    const refreshToken = secretString(creds?.refresh_token);
+    if (refreshToken && clientId && clientSecret) {
+      const tokenResult = await fetchJson(
+        deps.fetch,
+        GOOGLE_OAUTH_TOKEN_URL,
+        { "Content-Type": "application/x-www-form-urlencoded" },
+        deps.timeoutMs ?? PROVIDER_TIMEOUT_MS,
+        "POST",
+        new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+        }).toString(),
+      );
+      if (authRejected(tokenResult.status)) return errorRow(account, signInAgain("antigravity"), false);
+      const tokenBody = asRecord(tokenResult.body);
+      const accessToken = secretString(tokenBody?.access_token);
+      if (!accessToken) return errorRow(account, signInAgain("antigravity"), false);
+      bearerToken = accessToken;
+    } else if (refreshToken) {
+      bearerToken = refreshToken;
+    }
+  }
+
+  const result = await fetchJson(
+    deps.fetch,
+    ANTIGRAVITY_USAGE_URL,
+    {
+      Authorization: `Bearer ${bearerToken}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    deps.timeoutMs ?? PROVIDER_TIMEOUT_MS,
+    "POST",
+    "{}",
+  );
+  if (authRejected(result.status)) return errorRow(account, signInAgain("antigravity"), false);
+  if (!result.ok || result.body === null || typeof result.body !== "object") {
+    return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("antigravity") : unexpectedUsage("antigravity"), true);
+  }
+  return okRow(account, parseAntigravityUsage(result.body));
 }
