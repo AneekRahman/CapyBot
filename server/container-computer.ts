@@ -64,7 +64,7 @@ export const SHARED_LOCAL_VM_TARGET: LocalVmTarget = {
   key: "shared",
   containerName: CONTAINER,
   workspaceDir: VM_WORKSPACE_DIR,
-  viewerPort: HOST_VIEWER_PORT,
+  viewerPort: null,
   label: "shared",
 };
 
@@ -530,7 +530,7 @@ export async function containerComputerStatus(
       const detail = inspected[0];
       status.container = detail?.status?.state === "running" ? "running" : "stopped";
       status.network = applePortsAreLocal(detail?.configuration?.publishedPorts) ? "loopback" : "unsafe";
-      status.viewer_port = appleViewerPort(detail?.configuration?.publishedPorts, target.viewerPort);
+      status.viewer_port = appleViewerPort(detail?.configuration?.publishedPorts, target.viewerPort ?? HOST_VIEWER_PORT);
       const appleImage =
         typeof detail?.configuration?.image === "string"
           ? detail.configuration.image
@@ -925,8 +925,8 @@ export function containerRunArgs(
     "-e",
     `VNC_PW=${password}`,
     "-p",
-    target.viewerPort
-      ? `127.0.0.1:${target.viewerPort}:${INTERNAL_VIEWER_PORT}`
+    (target.viewerPort ?? (runtime === "container" ? HOST_VIEWER_PORT : null))
+      ? `127.0.0.1:${target.viewerPort ?? HOST_VIEWER_PORT}:${INTERNAL_VIEWER_PORT}`
       : `127.0.0.1::${INTERNAL_VIEWER_PORT}`,
     IMAGE,
   );
@@ -1237,6 +1237,7 @@ export function setupCommands(
     };
   }
   const command = (args: string[]) => [runtime, ...args].join(" ");
+  const viewerPort = target.viewerPort ?? (runtime === "container" ? HOST_VIEWER_PORT : null);
   return {
     install,
     runtimeStart,
@@ -1248,6 +1249,6 @@ export function setupCommands(
     start: command(["start", target.containerName]),
     stop: command(["stop", target.containerName]),
     remove: command(["rm", runtime === "container" ? "--force" : "-f", target.containerName]),
-    view: target.viewerPort ? `http://127.0.0.1:${target.viewerPort}/vnc.html` : "",
+    view: viewerPort ? `http://127.0.0.1:${viewerPort}/vnc.html` : "",
   };
 }

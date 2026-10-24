@@ -252,6 +252,9 @@ function readyInspect(overrides: Record<string, unknown> = {}) {
         RestartPolicy: { Name: "no", MaximumRetryCount: 0 },
         PortBindings: { "6901/tcp": [{ HostIp: "127.0.0.1" }] },
       },
+      NetworkSettings: {
+        Ports: { "6901/tcp": [{ HostIp: "127.0.0.1", HostPort: "49152" }] },
+      },
       Mounts: [
         {
           Type: "bind",
@@ -1053,10 +1056,14 @@ describe("setupCommands", () => {
 
   it("publishes only the password-protected viewer and only on loopback", () => {
     const command = setupCommands("podman", "linux").run!;
-    expect(command).toContain("-p 127.0.0.1:6080:6901");
-    expect(command).not.toContain(" -p 6080:6901");
+    expect(command).toContain("-p 127.0.0.1::6901");
+    expect(command).not.toContain("127.0.0.1:6080:6901");
+    expect(command).not.toContain(" -p 6901");
     expect(command).not.toContain("5900");
     expect(command).toContain("VNC_PW=CHANGE_ME");
+
+    const appleCommand = setupCommands("container", "darwin").run!;
+    expect(appleCommand).toContain("-p 127.0.0.1:6080:6901");
   });
 
   it("offers a start command for a stopped compatible desktop", () => {
