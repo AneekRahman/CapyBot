@@ -935,6 +935,251 @@
   --identity-coral: #E5634E;
 }
 
+[data-skin="acid"] {
+  --code-color-scheme: dark;
+  --color-app: #0b1409;
+  --color-panel: #111e0e;
+  --color-raised: #192c14;
+  --color-raised-hover: #213a1b;
+  --color-composer: #111e0e;
+  --color-composer-ring: #39ff14;
+  --color-card: #142410;
+  --color-menu: #142410;
+  --color-inset: #070d06;
+  --color-control: #1b3017;
+  --color-hairline: #39ff14;
+
+  --color-ink: #ffffff;
+  --color-ink-secondary: #c2fcae;
+  --color-ink-tertiary: #a0e889;
+
+  --color-accent: #39ff14;
+  --color-accent-border: #5cff3d;
+  --color-accent-text: #5cff3d;
+  --color-focus: #39ff14;
+  --color-accent-ink: #041402;
+  --color-bubble-user: #1f3a19;
+  --color-bubble-user-ink: #ffffff;
+
+  --color-success: #39ff14;
+  --color-danger: #ff3d66;
+  --color-danger-ink: #1f0107;
+  --color-success-ink: #041402;
+  --color-warning: #ffea00;
+  --color-scrollbar: #294d22;
+  --color-maus-line: #39ff14;
+
+  --font-sans: "Plus Jakarta Sans", ui-rounded, "SF Pro Rounded", "Inter", -apple-system, system-ui, sans-serif;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --identity-green: #009957;
+  --identity-blue: #377FE6;
+  --identity-red: #D94B52;
+  --identity-orange: #E78531;
+  --identity-purple: #8d69ce;
+  --identity-cyan: #0EA5C6;
+  --identity-pink: #D84F8B;
+  --identity-yellow: #D8A729;
+  --identity-teal: #01A492;
+  --identity-coral: #E5634E;
+}
+
+[data-skin="glitch"] {
+  --code-color-scheme: dark;
+  --color-app: #0a0a0f;
+  --color-panel: #12121c;
+  --color-raised: #1b1b2a;
+  --color-raised-hover: #252538;
+  --color-composer: #12121c;
+  --color-composer-ring: #00ffff;
+  --color-card: #151522;
+  --color-menu: #151522;
+  --color-inset: #06060a;
+  --color-control: #1e1e30;
+  --color-hairline: #00ffff;
+
+  --color-ink: #ffffff;
+  --color-ink-secondary: #ccd8f5;
+  --color-ink-tertiary: #a2b2d6;
+
+  --color-accent: #ff0055;
+  --color-accent-border: #ff2a70;
+  --color-accent-text: #ff4d88;
+  --color-focus: #00ffff;
+  --color-accent-ink: #140007;
+  --color-bubble-user: #222238;
+  --color-bubble-user-ink: #ffffff;
+
+  --color-success: #00ffaa;
+  --color-danger: #ff0055;
+  --color-danger-ink: #140007;
+  --color-success-ink: #021a10;
+  --color-warning: #ffe600;
+  --color-scrollbar: #32324e;
+  --color-maus-line: #00ffff;
+
+  --font-sans: "Plus Jakarta Sans", ui-rounded, "SF Pro Rounded", "Inter", -apple-system, system-ui, sans-serif;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --identity-green: #009957;
+  --identity-blue: #377FE6;
+  --identity-red: #D94B52;
+  --identity-orange: #E78531;
+  --identity-purple: #8a65cc;
+  --identity-cyan: #0EA5C6;
+  --identity-pink: #D84F8B;
+  --identity-yellow: #D8A729;
+  --identity-teal: #01A492;
+  --identity-coral: #E5634E;
+}
+
+[data-skin="eldritch"] {
+  --code-color-scheme: dark;
+  --color-app: #08060e;
+  --color-panel: #100c1c;
+  --color-raised: #1b142e;
+  --color-raised-hover: #271e42;
+  --color-composer: #100c1c;
+  --color-composer-ring: #b75cff;
+  --color-card: #140f24;
+  --color-menu: #140f24;
+  --color-inset: #040308;
+  --color-control: #201838;
+  --color-hairline: #9d4edd;
+
+  --color-ink: #f8f6ff;
+  --color-ink-secondary: #d6c7f8;
+  --color-ink-tertiary: #b3a0dd;
+
+  --color-accent: #00f0ff;
+  --color-accent-border: #33f3ff;
+  --color-accent-text: #33f3ff;
+  --color-focus: #b75cff;
+  --color-accent-ink: #021417;
+  --color-bubble-user: #2c1f4c;
+  --color-bubble-user-ink: #f8f6ff;
+
+  --color-success: #00ffaa;
+  --color-danger: #ff2a75;
+  --color-danger-ink: #20000d;
+  --color-success-ink: #011a11;
+  --color-warning: #ffb703;
+  --color-scrollbar: #3d2c66;
+  --color-maus-line: #9d4edd;
+
+  --font-sans: "Plus Jakarta Sans", ui-rounded, "SF Pro Rounded", "Inter", -apple-system, system-ui, sans-serif;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+  --identity-green: #009957;
+  --identity-blue: #377FE6;
+  --identity-red: #D94B52;
+  --identity-orange: #E78531;
+  --identity-purple: #8963cc;
+  --identity-cyan: #0EA5C6;
+  --identity-pink: #D84F8B;
+  --identity-yellow: #D8A729;
+  --identity-teal: #01A492;
+  --identity-coral: #E5634E;
+}
+
+[data-skin="circus"] {
+  --code-color-scheme: light;
+  --color-app: #fcf6ea;
+  --color-panel: #f3ebd7;
+  --color-raised: #e9dec4;
+  --color-raised-hover: #decfae;
+  --color-composer: #ffffff;
+  --color-composer-ring: #18120e;
+  --color-card: #ffffff;
+  --color-menu: #ffffff;
+  --color-inset: #ede1cb;
+  --color-control: #e4d7bf;
+  --color-hairline: #18120e;
+
+  --color-ink: #18120e;
+  --color-ink-secondary: #483a30;
+  --color-ink-tertiary: #68564a;
+
+  --color-accent: #c41c1c;
+  --color-accent-border: #e02424;
+  --color-accent-text: #b31616;
+  --color-focus: #18120e;
+  --color-accent-ink: #ffffff;
+  --color-bubble-user: #18120e;
+  --color-bubble-user-ink: #ffffff;
+
+  --color-success: #1b854b;
+  --color-danger: #c41c1c;
+  --color-danger-ink: #ffffff;
+  --color-success-ink: #ffffff;
+  --color-warning: #8c5d00;
+  --color-scrollbar: #cfbe9b;
+  --color-maus-line: #18120e;
+
+  --font-sans: "Plus Jakarta Sans", ui-rounded, "SF Pro Rounded", "Inter", -apple-system, system-ui, sans-serif;
+  --radius-lg: 8px;
+  --radius-xl: 14px;
+  --identity-green: #00824a;
+  --identity-blue: #1c6de2;
+  --identity-red: #d4333a;
+  --identity-orange: #af5b14;
+  --identity-purple: #8057C8;
+  --identity-cyan: #0b7c95;
+  --identity-pink: #d02e75;
+  --identity-yellow: #8d6d1a;
+  --identity-teal: #018072;
+  --identity-coral: #d2381f;
+}
+
+[data-skin="glitz"] {
+  --code-color-scheme: light;
+  --color-app: #fbeaff;
+  --color-panel: #f2d9fc;
+  --color-raised: #e7c6f7;
+  --color-raised-hover: #dcb3f2;
+  --color-composer: #ffffff;
+  --color-composer-ring: #ff007f;
+  --color-card: #ffffff;
+  --color-menu: #ffffff;
+  --color-inset: #ebd0f8;
+  --color-control: #dfbcf4;
+  --color-hairline: #220833;
+
+  --color-ink: #220833;
+  --color-ink-secondary: #562775;
+  --color-ink-tertiary: #6b2e90;
+
+  --color-accent: #ff007f;
+  --color-accent-border: #ff1a8c;
+  --color-accent-text: #c40062;
+  --color-focus: #006699;
+  --color-accent-ink: #1e000f;
+  --color-bubble-user: #220833;
+  --color-bubble-user-ink: #ffffff;
+
+  --color-success: #008752;
+  --color-danger: #c9003c;
+  --color-danger-ink: #ffffff;
+  --color-success-ink: #ffffff;
+  --color-warning: #855e00;
+  --color-scrollbar: #d4a2ed;
+  --color-maus-line: #ff007f;
+
+  --font-sans: "Plus Jakarta Sans", ui-rounded, "SF Pro Rounded", "Inter", -apple-system, system-ui, sans-serif;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --identity-green: #007d47;
+  --identity-blue: #1b69d9;
+  --identity-red: #cf2c34;
+  --identity-orange: #a75814;
+  --identity-purple: #7f56c8;
+  --identity-cyan: #0a778f;
+  --identity-pink: #c82c71;
+  --identity-yellow: #886819;
+  --identity-teal: #017b6e;
+  --identity-coral: #ca361e;
+}
+
 [data-skin="mocha"] {
   --code-color-scheme: dark;
   --color-app: #11111b;
@@ -3230,6 +3475,50 @@ html[data-cloud-intent-morph] [data-tour="composer"] { view-transition-name: clo
   }
 }
 
+@scope ([data-skin="circus"]) to ([data-skin]) {
+  .bg-bubble-user {
+    --color-ink: #ffffff;
+    --color-ink-secondary: #e8dfd3;
+    --color-ink-tertiary: #beaf9e;
+    --color-panel: #28201a;
+    --color-inset: #241c16;
+    --color-raised: #342b23;
+    --color-raised-hover: #42372e;
+    --color-control: #342b23;
+    --color-hairline: #7c6858;
+    --color-accent: #ffd100;
+    --color-accent-text: #ffd100;
+    --color-accent-ink: #18120e;
+    --color-focus: #ffd100;
+    --color-danger: #ff5555;
+    --color-danger-ink: #18120e;
+    --color-success: #4ee088;
+    --color-success-ink: #18120e;
+  }
+}
+
+@scope ([data-skin="glitz"]) to ([data-skin]) {
+  .bg-bubble-user {
+    --color-ink: #ffffff;
+    --color-ink-secondary: #e9d5f7;
+    --color-ink-tertiary: #c2a2da;
+    --color-panel: #33124a;
+    --color-inset: #2c0e40;
+    --color-raised: #40185c;
+    --color-raised-hover: #4f2070;
+    --color-control: #40185c;
+    --color-hairline: #8850ab;
+    --color-accent: #00f0ff;
+    --color-accent-text: #00f0ff;
+    --color-accent-ink: #220833;
+    --color-focus: #00f0ff;
+    --color-danger: #ff4d88;
+    --color-danger-ink: #220833;
+    --color-success: #00ffa6;
+    --color-success-ink: #220833;
+  }
+}
+
 @scope ([data-skin="outrun"]:not([data-skin-preview])) to ([data-skin]) {
   .bg-bubble-user {
     box-shadow: 3px 3px 0 var(--color-hairline);
@@ -3756,6 +4045,191 @@ html[data-cloud-intent-morph] [data-tour="composer"] { view-transition-name: clo
 }
 [data-skin="radar"][data-skin-preview] .bg-bubble-user {
   box-shadow: 1.5px 1.5px 0 #00f5b8;
+}
+
+@scope ([data-skin="acid"]:not([data-skin-preview])) to ([data-skin]) {
+  .bg-bubble-user {
+    box-shadow: 3px 3px 0 var(--color-hairline);
+  }
+  .bg-app {
+    background-image:
+      radial-gradient(circle at 10% 20%, color-mix(in srgb, #39ff14 7%, transparent) 0, transparent 40%),
+      radial-gradient(circle at 90% 80%, color-mix(in srgb, #39ff14 5%, transparent) 0, transparent 50%),
+      linear-gradient(135deg, color-mix(in srgb, #39ff14 3%, transparent) 25%, transparent 25%),
+      linear-gradient(225deg, color-mix(in srgb, #39ff14 3%, transparent) 25%, transparent 25%);
+    background-size: 100% 100%, 100% 100%, 60px 60px, 60px 60px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .ui-button:enabled:hover,
+    button.ui-pill:enabled:hover,
+    a.ui-pill:hover {
+      box-shadow: 2.5px 2.5px 0 #39ff14;
+      transform: translate(-1px, -1px);
+    }
+    .ui-button:enabled:active,
+    button.ui-pill:enabled:active,
+    a.ui-pill:active {
+      transform: translate(1.5px, 1.5px);
+      box-shadow: 0 0 0 #39ff14;
+    }
+  }
+}
+
+[data-skin="acid"][data-skin-preview] {
+  box-shadow: 0 0 0 1.5px #39ff14, 2px 2px 0 1.5px #192c14;
+}
+[data-skin="acid"][data-skin-preview] .bg-card {
+  box-shadow: 0 0 0 1px #39ff14;
+}
+[data-skin="acid"][data-skin-preview] .bg-bubble-user {
+  box-shadow: 1.5px 1.5px 0 #39ff14;
+}
+
+@scope ([data-skin="glitch"]:not([data-skin-preview])) to ([data-skin]) {
+  .bg-bubble-user {
+    box-shadow: 3px 0 0 #ff0055, -2px 0 0 #00ffff;
+  }
+  .bg-app {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgb(0 255 255 / 0.03) 2px, rgb(0 255 255 / 0.03) 4px),
+      linear-gradient(90deg, rgb(255 0 85 / 0.04), rgb(0 255 255 / 0.04));
+    background-size: 100% 4px, 100% 100%;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .ui-button:enabled:hover,
+    button.ui-pill:enabled:hover,
+    a.ui-pill:hover {
+      box-shadow: 3px 0 0 #ff0055, -2px 0 0 #00ffff;
+      transform: translate(-1px, 0);
+    }
+    .ui-button:enabled:active,
+    button.ui-pill:enabled:active,
+    a.ui-pill:active {
+      transform: translate(1px, 0);
+      box-shadow: 0 0 0 transparent;
+    }
+  }
+}
+
+[data-skin="glitch"][data-skin-preview] {
+  box-shadow: 0 0 0 1.5px #00ffff, 2px 0 0 1.5px #ff0055;
+}
+[data-skin="glitch"][data-skin-preview] .bg-card {
+  box-shadow: 0 0 0 1px #00ffff;
+}
+[data-skin="glitch"][data-skin-preview] .bg-bubble-user {
+  box-shadow: 2px 0 0 #ff0055, -1px 0 0 #00ffff;
+}
+
+@scope ([data-skin="eldritch"]:not([data-skin-preview])) to ([data-skin]) {
+  .bg-bubble-user {
+    box-shadow: 3.5px 3.5px 0 #4a1975;
+  }
+  .bg-app {
+    background-image:
+      radial-gradient(circle at 50% 50%, color-mix(in srgb, #9d4edd 10%, transparent) 0%, transparent 60%),
+      radial-gradient(circle at 80% 20%, color-mix(in srgb, #00f0ff 6%, transparent) 0%, transparent 40%),
+      repeating-radial-gradient(circle at 50% 100%, transparent 0, transparent 40px, color-mix(in srgb, #9d4edd 5%, transparent) 41px, transparent 42px);
+    background-size: 100% 100%, 100% 100%, 100% 100%;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .ui-button:enabled:hover,
+    button.ui-pill:enabled:hover,
+    a.ui-pill:hover {
+      box-shadow: 2.5px 2.5px 0 #9d4edd;
+      transform: translate(-1px, -1px);
+    }
+    .ui-button:enabled:active,
+    button.ui-pill:enabled:active,
+    a.ui-pill:active {
+      transform: translate(1.5px, 1.5px);
+      box-shadow: 0 0 0 #9d4edd;
+    }
+  }
+}
+
+[data-skin="eldritch"][data-skin-preview] {
+  box-shadow: 0 0 0 1.5px #9d4edd, 2px 2px 0 1.5px #4a1975;
+}
+[data-skin="eldritch"][data-skin-preview] .bg-card {
+  box-shadow: 0 0 0 1px #9d4edd;
+}
+[data-skin="eldritch"][data-skin-preview] .bg-bubble-user {
+  box-shadow: 1.5px 1.5px 0 #9d4edd;
+}
+
+@scope ([data-skin="circus"]:not([data-skin-preview])) to ([data-skin]) {
+  .bg-bubble-user {
+    box-shadow: 3px 3px 0 #18120e;
+  }
+  .bg-app {
+    background-image:
+      repeating-linear-gradient(45deg, color-mix(in srgb, #c41c1c 4%, transparent) 0, color-mix(in srgb, #c41c1c 4%, transparent) 20px, transparent 20px, transparent 40px),
+      repeating-linear-gradient(-45deg, color-mix(in srgb, #ffd100 4%, transparent) 0, color-mix(in srgb, #ffd100 4%, transparent) 20px, transparent 20px, transparent 40px);
+    background-size: 100% 100%;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .ui-button:enabled:hover,
+    button.ui-pill:enabled:hover,
+    a.ui-pill:hover {
+      box-shadow: 2.5px 2.5px 0 #18120e;
+      transform: translate(-1px, -1px);
+    }
+    .ui-button:enabled:active,
+    button.ui-pill:enabled:active,
+    a.ui-pill:active {
+      transform: translate(1.5px, 1.5px);
+      box-shadow: 0 0 0 #18120e;
+    }
+  }
+}
+
+[data-skin="circus"][data-skin-preview] {
+  box-shadow: 0 0 0 1.5px #18120e, 2px 2px 0 1.5px #c41c1c;
+}
+[data-skin="circus"][data-skin-preview] .bg-card {
+  box-shadow: 0 0 0 1px #18120e;
+}
+[data-skin="circus"][data-skin-preview] .bg-bubble-user {
+  box-shadow: 1.5px 1.5px 0 #18120e;
+}
+
+@scope ([data-skin="glitz"]:not([data-skin-preview])) to ([data-skin]) {
+  .bg-bubble-user {
+    box-shadow: 3.5px 3.5px 0 #ff007f;
+  }
+  .bg-app {
+    background-image:
+      radial-gradient(circle at 15% 15%, color-mix(in srgb, #ff007f 10%, transparent) 4px, transparent 5px),
+      radial-gradient(circle at 85% 35%, color-mix(in srgb, #00f0ff 12%, transparent) 5px, transparent 6px),
+      radial-gradient(circle at 45% 75%, color-mix(in srgb, #ffe600 12%, transparent) 4px, transparent 5px),
+      linear-gradient(45deg, color-mix(in srgb, #ff007f 4%, transparent) 25%, transparent 25%, transparent 75%, color-mix(in srgb, #ff007f 4%, transparent) 75%);
+    background-size: 80px 80px, 90px 90px, 70px 70px, 30px 30px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .ui-button:enabled:hover,
+    button.ui-pill:enabled:hover,
+    a.ui-pill:hover {
+      box-shadow: 2.5px 2.5px 0 #ff007f;
+      transform: translate(-1px, -1px);
+    }
+    .ui-button:enabled:active,
+    button.ui-pill:enabled:active,
+    a.ui-pill:active {
+      transform: translate(1.5px, 1.5px);
+      box-shadow: 0 0 0 #ff007f;
+    }
+  }
+}
+
+[data-skin="glitz"][data-skin-preview] {
+  box-shadow: 0 0 0 1.5px #ff007f, 2px 2px 0 1.5px #220833;
+}
+[data-skin="glitz"][data-skin-preview] .bg-card {
+  box-shadow: 0 0 0 1px #ff007f;
+}
+[data-skin="glitz"][data-skin-preview] .bg-bubble-user {
+  box-shadow: 1.5px 1.5px 0 #ff007f;
 }
 
 /* The main pane only, and never the picker miniature. Isolation keeps the
