@@ -39,6 +39,7 @@ Product development and private operations share one branch. Release and hosted-
 - 2026-10-24 — Publisher gates and example hosted-service configuration committed as `30d4e1739`. All 13 workflow files parsed, both Worker dry-runs/typechecks passed, and 72 focused configuration tests passed. Publishing targets still require deliberate reconfiguration before enabling `OMB_ENABLE_PUBLISHING`.
 - 2026-10-24 — Independent final review of `d3614ea11` passed: 39 commits after the shared upstream baseline, zero Gitleaks findings in that candidate range, and no targeted private identifiers or excluded paths in the tracked tree. Shared upstream history is retained; a negative scan is not a guarantee of absence of every possible secret.
 - 2026-10-24 — Final sign-off documentation is the only change after that review. This commit is rescanned before export. No repository creation, remote push, release, or live deployment has been performed.
+- 2026-10-25 — User renamed target public repository to "CapyBot". Updated fork repository URLs across docs, manifests, and links to https://github.com/AneekRahman/CapyBot. Gitleaks scan passed with zero findings. Local candidate HEAD is `be25489dc`. Still awaiting human approval before push.
 
 ## Project environment
 
