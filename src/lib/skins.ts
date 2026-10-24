@@ -7,6 +7,11 @@ export const SKIN_IDS = [
   "meadow",
   "mocha",
   "stealth",
+  "dracula",
+  "rose-pine",
+  "synthwave",
+  "vesper",
+  "kanagawa",
   "halloween",
 ] as const;
 export type SkinId = (typeof SKIN_IDS)[number];
@@ -24,6 +29,11 @@ export const SKINS: readonly Skin[] = [
   { id: "meadow", name: "Meadow", tagline: "Fresh white with a calm green. The MausBot look." },
   { id: "mocha", name: "Mocha", tagline: "Soothing dark pastel with lavender warmth. Easy on the eyes." },
   { id: "stealth", name: "Stealth", tagline: "Pitch-black OLED with razor hairlines and electric blurple." },
+  { id: "dracula", name: "Dracula", tagline: "Gothic dark slate lit with vibrant neon purple and pink." },
+  { id: "rose-pine", name: "Rosé Pine", tagline: "Moody pine needle dark with dusty rose and muted gold." },
+  { id: "synthwave", name: "Synthwave", tagline: "1980s neon arcade. Deep twilight glowing in electric cyan and magenta." },
+  { id: "vesper", name: "Vesper", tagline: "Ultra-minimal pitch charcoal with warm glowing amber." },
+  { id: "kanagawa", name: "Kanagawa", tagline: "Hokusai woodblock tones. Sumi ink dark with wave blue and spring green." },
   { id: "halloween", name: "Halloween", tagline: "Plum after dark, lit in pumpkin orange. Bats optional." },
 ];
 
