@@ -144,7 +144,12 @@ function modelMatches(name: string, modelId: string): boolean {
   const a = normalize(name);
   const b = normalize(modelId);
   if (!a || !b) return false;
-  return a === b || a.includes(b) || b.includes(a);
+  if (a === b || a.includes(b) || b.includes(a)) return true;
+  if (/\b(models|group)\b/.test(a)) {
+    const tokens = a.split(/\s+/).filter((t) => t !== "and" && t !== "or" && t !== "models" && t !== "group");
+    return tokens.some((token) => token.length > 2 && b.includes(token));
+  }
+  return false;
 }
 
 function findWindow(windows: PlanExtra[], type: "5h" | "weekly"): PlanWindow | null {
@@ -202,7 +207,11 @@ export function resolveModelUsage(input: {
 
   const models = provider.models ?? [];
   if (models.length > 0) {
-    const matched = models.find((m) => modelMatches(m.name, modelId));
+    const matched = models.find((m) => {
+      const a = normalize(m.name);
+      const b = normalize(modelId);
+      return a === b || a.includes(b) || b.includes(a);
+    }) ?? models.find((m) => modelMatches(m.name, modelId));
     if (matched) {
       matchedModelLabel = matched.name;
       const m5h = findWindow(matched.windows, "5h");

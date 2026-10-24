@@ -153,6 +153,50 @@ describe("resolveModelUsage", () => {
     expect(resolved?.weekly.usedPercent).toBe(45);
   });
 
+  it("switches to Claude and GPT models quota when Claude is selected on Antigravity", () => {
+    const report = fixtureReport([
+      {
+        id: "antigravity",
+        driver: "antigravity",
+        name: "Aneek8",
+        fiveHour: window(18, "2026-10-24T01:19:18Z"),
+        weekly: window(74, "2026-10-24T11:49:27Z"),
+        models: [
+          {
+            name: "Claude and GPT models",
+            windows: [
+              { label: "5-hour", remainingPercent: 100, usedPercent: 0, resetsAt: "2026-10-24T01:58:22Z" },
+              { label: "Weekly", remainingPercent: 49, usedPercent: 51, resetsAt: "2026-10-25T06:24:39Z" },
+            ],
+          },
+        ],
+      },
+    ]);
+    const instances = [fixtureInstance("antigravity", "antigravityAgent")];
+
+    const claudeResolved = resolveModelUsage({
+      report,
+      selection: { instanceId: "antigravity", model: "claude-3-5-sonnet" },
+      instances,
+    });
+    expect(claudeResolved?.modelLabel).toBe("Claude and GPT models");
+    expect(claudeResolved?.fiveHour.usedPercent).toBe(0);
+    expect(claudeResolved?.fiveHour.resetsAt).toBe("2026-10-24T01:58:22Z");
+    expect(claudeResolved?.weekly.usedPercent).toBe(51);
+    expect(claudeResolved?.weekly.resetsAt).toBe("2026-10-25T06:24:39Z");
+
+    const geminiResolved = resolveModelUsage({
+      report,
+      selection: { instanceId: "antigravity", model: "gemini-2.5-pro" },
+      instances,
+    });
+    expect(geminiResolved?.modelLabel).toBe("Gemini models");
+    expect(geminiResolved?.fiveHour.usedPercent).toBe(18);
+    expect(geminiResolved?.fiveHour.resetsAt).toBe("2026-10-24T01:19:18Z");
+    expect(geminiResolved?.weekly.usedPercent).toBe(74);
+    expect(geminiResolved?.weekly.resetsAt).toBe("2026-10-24T11:49:27Z");
+  });
+
   it("differentiates between multiple Gemini accounts by instanceId", () => {
     const report = fixtureReport([
       {

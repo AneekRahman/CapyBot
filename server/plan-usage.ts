@@ -117,9 +117,11 @@ const GROK_CREDITS_URL = "https://cli-chat-proxy.grok.com/v1/billing?format=cred
 const GROK_BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing";
 const GROK_SETTINGS_URL = "https://cli-chat-proxy.grok.com/v1/settings";
 const ANTIGRAVITY_USAGE_URL = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary";
+const ANTIGRAVITY_QUOTA_URL = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota";
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 const ANTIGRAVITY_LOAD_CODE_ASSIST_URL = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
+const ANTIGRAVITY_USER_AGENT = `antigravity/2.16.0 (${process.platform})`;
 
 const FIVE_HOUR_MIN_SECONDS = 3 * 3600;
 const FIVE_HOUR_MAX_SECONDS = 8 * 3600;
@@ -226,7 +228,7 @@ export function parseGrokUsage(credits: unknown, billing?: unknown, settings?: u
   return { plan: grokPlan(settings), fiveHour, weekly, extra, models };
 }
 
-export function parseAntigravityUsage(body: unknown): PlanWindows {
+export function parseAntigravityUsage(body: unknown, quotaBody?: unknown): PlanWindows {
   const root = asRecord(body);
   const models: PlanModelUsage[] = [];
   const extra: PlanExtra[] = [];
@@ -240,19 +242,28 @@ export function parseAntigravityUsage(body: unknown): PlanWindows {
   }
 
   const groups = Array.isArray(root?.groups) ? root.groups : [];
+  const hasGeminiGroup = groups.some((g) => {
+    const rec = asRecord(g);
+    const id = typeof rec?.id === "string" ? rec.id : (typeof rec?.groupId === "string" ? rec.groupId : "");
+    const name = typeof rec?.displayName === "string" ? rec.displayName : (typeof rec?.name === "string" ? rec.name : "");
+    return id === "gemini-models" || /gemini/i.test(name) || /gemini/i.test(id);
+  });
+
   for (let i = 0; i < groups.length; i++) {
     const group = asRecord(groups[i]);
     if (!group) continue;
-    const rawId = typeof group.id === "string" ? group.id : "";
-    const rawName = typeof group.name === "string" ? group.name : "";
-    const isPrimary = i === 0 || rawId === "gemini-models" || /gemini/i.test(rawName);
+    const rawId = typeof group.id === "string" ? group.id : (typeof group.groupId === "string" ? group.groupId : "");
+    const rawName = typeof group.displayName === "string" ? group.displayName : (typeof group.name === "string" ? group.name : "");
+    const isGemini = rawId === "gemini-models" || /gemini/i.test(rawName) || /gemini/i.test(rawId);
+    const isPrimary = isGemini || (i === 0 && !hasGeminiGroup);
     const buckets = Array.isArray(group.buckets) ? group.buckets : [];
 
     for (const item of buckets) {
       const bucket = asRecord(item);
       if (!bucket) continue;
       const windowStr = typeof bucket.window === "string" ? bucket.window.toLowerCase() : "";
-      const remainingFrac = finiteNumber(bucket.remainingFraction);
+      const bucketId = typeof bucket.bucketId === "string" ? bucket.bucketId.toLowerCase() : (typeof bucket.id === "string" ? bucket.id.toLowerCase() : "");
+      const remainingFrac = finiteNumber(bucket.remainingFraction ?? bucket.remaining_fraction);
       let usedPercent: number | null = null;
       if (remainingFrac != null) {
         usedPercent = clampPercent(Math.round((1 - remainingFrac) * 10_000) / 100);
@@ -267,8 +278,8 @@ export function parseAntigravityUsage(body: unknown): PlanWindows {
       if (usedPercent == null) continue;
       const resetsAt = isoOrNull(bucket.resetTime ?? bucket.resetsAt ?? bucket.reset_time ?? bucket.reset_at);
       const open = openWindow(usedPercent, resetsAt);
-      const isFiveHour = windowStr === "5h" || windowStr === "5-hour" || windowStr === "five_hour";
-      const isWeekly = windowStr === "weekly" || windowStr === "7d" || windowStr === "seven_day" || windowStr === "1w";
+      const isFiveHour = windowStr === "5h" || windowStr === "5-hour" || windowStr === "five_hour" || bucketId.includes("5h") || bucketId.includes("five_hour");
+      const isWeekly = windowStr === "weekly" || windowStr === "7d" || windowStr === "seven_day" || windowStr === "1w" || bucketId.includes("weekly") || bucketId.includes("7d");
 
       if (isPrimary) {
         if (isFiveHour && !fiveHour.available) {
@@ -285,19 +296,44 @@ export function parseAntigravityUsage(body: unknown): PlanWindows {
     }
   }
 
+  if (quotaBody) {
+    const qRoot = asRecord(quotaBody);
+    const qBuckets = Array.isArray(qRoot?.buckets) ? qRoot.buckets : [];
+    for (const item of qBuckets) {
+      const b = asRecord(item);
+      if (!b) continue;
+      const modelId = typeof b.modelId === "string" ? b.modelId : (typeof b.model_id === "string" ? b.model_id : "");
+      const remainingFrac = finiteNumber(b.remainingFraction ?? b.remaining_fraction);
+      if (remainingFrac == null) continue;
+      const usedPercent = clampPercent(Math.round((1 - remainingFrac) * 10_000) / 100);
+      const resetsAt = isoOrNull(b.resetTime ?? b.reset_time ?? b.resetsAt);
+      const open = openWindow(usedPercent, resetsAt);
+      const label = modelId.split(/[-_ ]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      addModelWindow(models, label || modelId || "Model", extraLine("5-hour", open));
+      if (!fiveHour.available && (modelId.startsWith("gemini-") || modelId === "chat_20706")) {
+        fiveHour = open;
+      }
+    }
+  }
+
   if (!fiveHour.available && !weekly.available) {
     const directBuckets = Array.isArray(root?.buckets) ? root.buckets : [];
     for (const item of directBuckets) {
       const bucket = asRecord(item);
       if (!bucket) continue;
       const windowStr = typeof bucket.window === "string" ? bucket.window.toLowerCase() : "";
-      const remainingFrac = finiteNumber(bucket.remainingFraction);
-      const usedPercent = remainingFrac != null ? clampPercent(Math.round((1 - remainingFrac) * 10_000) / 100) : finiteNumber(bucket.usedPercent);
+      const bucketId = typeof bucket.bucketId === "string" ? bucket.bucketId.toLowerCase() : (typeof bucket.id === "string" ? bucket.id.toLowerCase() : "");
+      const remainingFrac = finiteNumber(bucket.remainingFraction ?? bucket.remaining_fraction);
+      const usedPercent = remainingFrac != null
+        ? clampPercent(Math.round((1 - remainingFrac) * 10_000) / 100)
+        : finiteNumber(bucket.usedPercent ?? bucket.used_percent);
       if (usedPercent == null) continue;
-      const resetsAt = isoOrNull(bucket.resetTime ?? bucket.resetsAt);
+      const resetsAt = isoOrNull(bucket.resetTime ?? bucket.resetsAt ?? bucket.reset_time ?? bucket.reset_at);
       const open = openWindow(usedPercent, resetsAt);
-      if ((windowStr === "5h" || windowStr === "5-hour") && !fiveHour.available) fiveHour = open;
-      else if ((windowStr === "weekly" || windowStr === "7d") && !weekly.available) weekly = open;
+      const isFiveHour = windowStr === "5h" || windowStr === "5-hour" || bucketId.includes("5h");
+      const isWeekly = windowStr === "weekly" || windowStr === "7d" || bucketId.includes("weekly");
+      if (isFiveHour && !fiveHour.available) fiveHour = open;
+      else if (isWeekly && !weekly.available) weekly = open;
       else extra.push(extraLine(titleWords(windowStr || "Quota"), open));
     }
   }
@@ -416,7 +452,7 @@ function extraLine(label: string, window: PlanWindow): PlanExtra {
 
 function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.min(100, Math.max(0, value));
+  return Math.round(Math.min(100, Math.max(0, value)) * 100) / 100;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -1165,10 +1201,10 @@ function readLocalAntigravityUsage(
 
   const resetsAt5h = oldest5h !== null
     ? new Date(oldest5h + 5 * 3600 * 1000).toISOString()
-    : new Date(now + 5 * 3600 * 1000).toISOString();
+    : null;
   const resetsAt7d = oldest7d !== null
     ? new Date(oldest7d + 7 * 86400 * 1000).toISOString()
-    : new Date(now + 7 * 86400 * 1000).toISOString();
+    : null;
 
   const models: PlanModelUsage[] = [];
   if (modelTurns.size > 0) {
@@ -1241,6 +1277,7 @@ async function fetchAntigravity(
       Authorization: `Bearer ${bearerToken}`,
       Accept: "application/json",
       "Content-Type": "application/json",
+      "User-Agent": ANTIGRAVITY_USER_AGENT,
     },
     deps.timeoutMs ?? PROVIDER_TIMEOUT_MS,
     "POST",
@@ -1248,9 +1285,29 @@ async function fetchAntigravity(
   );
 
   if (result.ok && result.body && typeof result.body === "object") {
+    let quotaBody: unknown = null;
     const parsed = parseAntigravityUsage(result.body);
-    if (parsed.fiveHour.available || parsed.weekly.available || parsed.extra.length > 0) {
-      return okRow(account, parsed);
+    if (!parsed.fiveHour.available) {
+      const quotaResult = await fetchJson(
+        deps.fetch,
+        ANTIGRAVITY_QUOTA_URL,
+        {
+          Authorization: `Bearer ${bearerToken}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "User-Agent": ANTIGRAVITY_USER_AGENT,
+        },
+        deps.timeoutMs ?? PROVIDER_TIMEOUT_MS,
+        "POST",
+        "{}",
+      );
+      if (quotaResult.ok && quotaResult.body && typeof quotaResult.body === "object") {
+        quotaBody = quotaResult.body;
+      }
+    }
+    const finalParsed = parseAntigravityUsage(result.body, quotaBody);
+    if (finalParsed.fiveHour.available || finalParsed.weekly.available || finalParsed.extra.length > 0) {
+      return okRow(account, finalParsed);
     }
   }
 
@@ -1280,6 +1337,7 @@ async function fetchAntigravity(
         Authorization: `Bearer ${bearerToken}`,
         Accept: "application/json",
         "Content-Type": "application/json",
+        "User-Agent": ANTIGRAVITY_USER_AGENT,
       },
       deps.timeoutMs ?? PROVIDER_TIMEOUT_MS,
       "POST",

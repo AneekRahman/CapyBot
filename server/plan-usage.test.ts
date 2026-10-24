@@ -227,6 +227,115 @@ describe("plan usage parsers", () => {
       },
     ]);
   });
+
+  it("parses live Google Cloud Code retrieveUserQuotaSummary payload with displayName and bucketId", () => {
+    const parsed = parseAntigravityUsage({
+      groups: [
+        {
+          displayName: "Gemini Models",
+          buckets: [
+            {
+              bucketId: "gemini-weekly",
+              remainingFraction: 0.26315597,
+              resetTime: "2026-10-24T11:49:27Z",
+            },
+            {
+              bucketId: "gemini-5h",
+              remainingFraction: 0.819864,
+              resetTime: "2026-10-24T01:19:18Z",
+            },
+          ],
+        },
+        {
+          displayName: "Claude and GPT models",
+          buckets: [
+            {
+              bucketId: "3p-weekly",
+              remainingFraction: 0.49382716,
+              resetTime: "2026-10-25T06:24:39Z",
+            },
+            {
+              bucketId: "3p-5h",
+              remainingFraction: 1.0,
+              resetTime: "2026-10-24T01:58:22Z",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(parsed.fiveHour).toMatchObject({
+      available: true,
+      remainingPercent: 81.99,
+      usedPercent: 18.01,
+      resetsAt: "2026-10-24T01:19:18.000Z",
+    });
+    expect(parsed.weekly).toMatchObject({
+      available: true,
+      remainingPercent: 26.32,
+      usedPercent: 73.68,
+      resetsAt: "2026-10-24T11:49:27.000Z",
+    });
+    expect(parsed.models).toEqual([
+      {
+        name: "Claude and GPT models",
+        windows: [
+          expect.objectContaining({
+            label: "5-hour",
+            remainingPercent: 100,
+            usedPercent: 0,
+            resetsAt: "2026-10-24T01:58:22.000Z",
+          }),
+          expect.objectContaining({
+            label: "Weekly",
+            remainingPercent: 49.38,
+            usedPercent: 50.62,
+            resetsAt: "2026-10-25T06:24:39.000Z",
+          }),
+        ],
+      },
+    ]);
+  });
+
+  it("merges retrieveUserQuota model buckets if fiveHour is missing from summary", () => {
+    const summary = {
+      groups: [
+        {
+          displayName: "Gemini Models",
+          buckets: [
+            {
+              bucketId: "gemini-weekly",
+              remainingFraction: 0.35,
+              resetTime: "2026-10-24T11:49:27Z",
+            },
+          ],
+        },
+      ],
+    };
+    const quota = {
+      buckets: [
+        {
+          modelId: "gemini-3.8-flash-tiered",
+          remainingFraction: 0.88,
+          resetTime: "2026-10-24T01:19:18Z",
+        },
+      ],
+    };
+
+    const parsed = parseAntigravityUsage(summary, quota);
+    expect(parsed.fiveHour).toMatchObject({
+      available: true,
+      remainingPercent: 88,
+      usedPercent: 12,
+      resetsAt: "2026-10-24T01:19:18.000Z",
+    });
+    expect(parsed.weekly).toMatchObject({
+      available: true,
+      remainingPercent: 35,
+      usedPercent: 65,
+      resetsAt: "2026-10-24T11:49:27.000Z",
+    });
+  });
 });
 
 describe("plan usage fetcher", () => {
