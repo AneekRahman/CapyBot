@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   formatResetDistance,
   resolveModelUsage,
   usageTone,
   usePlanUsageReport,
+  USAGE_METER_POLL_INTERVAL_MS,
   type PlanWindow,
 } from "@/lib/dynamic-plan-usage";
 import { t } from "@/lib/i18n";
@@ -66,14 +68,23 @@ function MeterBar({
 export function SidebarUsageMeter() {
   const advanced = useAdvancedMode();
   const { state } = useStore();
-  const { report } = usePlanUsageReport();
+  const { report, refresh } = usePlanUsageReport();
   const railSelection = useRailPickerSelection();
   const [now, setNow] = useState(() => Date.now());
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!advanced) return;
+    const pollInterval = window.setInterval(() => {
+      void refresh();
+    }, USAGE_METER_POLL_INTERVAL_MS);
+    return () => window.clearInterval(pollInterval);
+  }, [advanced, refresh]);
 
   if (!advanced) {
     return null;
@@ -99,6 +110,17 @@ export function SidebarUsageMeter() {
     return null;
   }
 
+  const handleRefresh = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const preset = DRIVER_PRESETS[meter.driver];
 
   return (
@@ -112,11 +134,24 @@ export function SidebarUsageMeter() {
           {preset && <PresetProviderMark preset={preset} size={13} className="shrink-0" />}
           <span className="truncate text-[11px] font-semibold text-ink">{meter.providerName}</span>
         </div>
-        {meter.modelLabel && (
-          <span className="max-w-[100px] truncate rounded bg-raised px-1 py-0.5 text-[9.5px] font-medium text-ink-secondary">
-            {meter.modelLabel}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {meter.modelLabel && (
+            <span className="max-w-[85px] truncate rounded bg-raised px-1 py-0.5 text-[9.5px] font-medium text-ink-secondary">
+              {meter.modelLabel}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            aria-label={t("planUsage.refresh")}
+            title={t("planUsage.refresh")}
+            data-testid="sidebar-usage-refresh-button"
+            className="flex size-5 items-center justify-center rounded text-ink-secondary hover:bg-control hover:text-ink disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw size={11} className={cn("shrink-0", refreshing && "animate-spin")} />
+          </button>
+        </div>
       </div>
       <div className="flex flex-col gap-2">
         <MeterBar label={t("planUsage.fiveHour")} window={meter.fiveHour} now={now} />

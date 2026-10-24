@@ -1,12 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearPlanUsageCache,
+  fetchPlanUsageReport,
   formatResetDistance,
   resolveModelUsage,
+  USAGE_METER_POLL_INTERVAL_MS,
   usageTone,
   type PlanProvider,
   type PlanUsageReport,
 } from "./dynamic-plan-usage";
 import type { InstanceInfo, ModelSelection } from "@/state/store";
+
+const apiMock = vi.fn();
+vi.mock("@/state/store", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/state/store")>(),
+  api: (...args: unknown[]) => apiMock(...args),
+}));
 
 function window(usedPercent: number | null, resetsAt: string | null = null) {
   return {
@@ -270,5 +279,58 @@ describe("resolveModelUsage", () => {
     const instances = [fixtureInstance("codex", "codex")];
 
     expect(resolveModelUsage({ report, selection: { instanceId: "codex", model: "gpt-4o" }, instances })).toBeNull();
+  });
+});
+
+describe("fetchPlanUsageReport and cache", () => {
+  beforeEach(() => {
+    clearPlanUsageCache();
+    apiMock.mockReset();
+  });
+
+  it("exports USAGE_METER_POLL_INTERVAL_MS as 1 minute (60,000ms)", () => {
+    expect(USAGE_METER_POLL_INTERVAL_MS).toBe(60_000);
+  });
+
+  it("fetches /api/plan-usage and caches the report for 30 seconds", async () => {
+    const report = fixtureReport([{ id: "codex", driver: "codex" }]);
+    apiMock.mockResolvedValueOnce(report);
+
+    const first = await fetchPlanUsageReport(false);
+    expect(apiMock).toHaveBeenCalledWith("/api/plan-usage");
+    expect(first).toEqual(report);
+
+    // Call again immediately: should return cached result without hitting API
+    const second = await fetchPlanUsageReport(false);
+    expect(apiMock).toHaveBeenCalledTimes(1);
+    expect(second).toEqual(report);
+  });
+
+  it("hard refresh (refresh = true) bypasses cache and calls /api/plan-usage?refresh=1", async () => {
+    const initialReport = fixtureReport([{ id: "codex", driver: "codex", fiveHour: window(20) }]);
+    const refreshedReport = fixtureReport([{ id: "codex", driver: "codex", fiveHour: window(35) }]);
+    apiMock.mockResolvedValueOnce(initialReport);
+    apiMock.mockResolvedValueOnce(refreshedReport);
+
+    await fetchPlanUsageReport(false);
+    expect(apiMock).toHaveBeenCalledWith("/api/plan-usage");
+
+    // Perform hard refresh
+    const refreshed = await fetchPlanUsageReport(true);
+    expect(apiMock).toHaveBeenCalledWith("/api/plan-usage?refresh=1");
+    expect(refreshed).toEqual(refreshedReport);
+  });
+
+  it("clearPlanUsageCache resets cached report", async () => {
+    const report = fixtureReport([{ id: "codex", driver: "codex" }]);
+    apiMock.mockResolvedValue(report);
+
+    await fetchPlanUsageReport(false);
+    expect(apiMock).toHaveBeenCalledTimes(1);
+
+    clearPlanUsageCache();
+
+    await fetchPlanUsageReport(false);
+    expect(apiMock).toHaveBeenCalledTimes(2);
   });
 });

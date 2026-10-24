@@ -74,6 +74,8 @@ export function formatResetDistance(resetsAt: string | null, now: number): strin
   return `${mins}m`;
 }
 
+export const USAGE_METER_POLL_INTERVAL_MS = 60_000;
+
 export function usageTone(used: number): string {
   if (used >= 90) return "bg-danger";
   if (used >= 70) return "bg-warning";
@@ -83,6 +85,7 @@ export function usageTone(used: number): string {
 let cachedReport: PlanUsageReport | null = null;
 let cachedAt = 0;
 let inflightFetch: Promise<PlanUsageReport | null> | null = null;
+let inflightIsRefresh = false;
 const reportListeners = new Set<() => void>();
 
 function notifyReportListeners(): void {
@@ -91,30 +94,40 @@ function notifyReportListeners(): void {
   }
 }
 
+export function clearPlanUsageCache(): void {
+  cachedReport = null;
+  cachedAt = 0;
+  inflightFetch = null;
+  inflightIsRefresh = false;
+}
+
 export async function fetchPlanUsageReport(refresh = false): Promise<PlanUsageReport | null> {
   const now = Date.now();
   if (!refresh && cachedReport && now - cachedAt < 30_000) {
     return cachedReport;
   }
-  if (inflightFetch) {
+  if (inflightFetch && (!refresh || inflightIsRefresh)) {
     return inflightFetch;
   }
+  inflightIsRefresh = refresh;
   inflightFetch = api<PlanUsageReport>(refresh ? "/api/plan-usage?refresh=1" : "/api/plan-usage")
     .then((data) => {
       cachedReport = data;
       cachedAt = Date.now();
       inflightFetch = null;
+      inflightIsRefresh = false;
       notifyReportListeners();
       return data;
     })
     .catch(() => {
       inflightFetch = null;
+      inflightIsRefresh = false;
       return cachedReport;
     });
   return inflightFetch;
 }
 
-export function usePlanUsageReport(): { report: PlanUsageReport | null; refresh: () => void } {
+export function usePlanUsageReport(): { report: PlanUsageReport | null; refresh: () => Promise<PlanUsageReport | null> } {
   const report = useSyncExternalStore(
     (notify) => {
       reportListeners.add(notify);
@@ -132,7 +145,7 @@ export function usePlanUsageReport(): { report: PlanUsageReport | null; refresh:
 
   return {
     report,
-    refresh: () => void fetchPlanUsageReport(true),
+    refresh: () => fetchPlanUsageReport(true),
   };
 }
 

@@ -1,6 +1,9 @@
-import { createElement } from "react";
+// @vitest-environment happy-dom
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setRailPickerPreview } from "@/lib/rail-picker-state";
 import { SidebarUsageMeter } from "./SidebarUsageMeter";
 
@@ -8,6 +11,7 @@ const fixture = vi.hoisted(() => ({
   advanced: true,
   state: {} as Record<string, unknown>,
   report: null as unknown,
+  refresh: vi.fn(),
 }));
 
 vi.mock("@/lib/interface-mode", () => ({
@@ -23,7 +27,7 @@ vi.mock("@/lib/dynamic-plan-usage", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/dynamic-plan-usage")>();
   return {
     ...actual,
-    usePlanUsageReport: () => ({ report: fixture.report, refresh: vi.fn() }),
+    usePlanUsageReport: () => ({ report: fixture.report, refresh: fixture.refresh }),
   };
 });
 
@@ -76,12 +80,23 @@ function setupFixture(options: {
 }
 
 describe("SidebarUsageMeter", () => {
+  let container: HTMLDivElement | null = null;
+
   beforeEach(() => {
+    vi.clearAllMocks();
     setRailPickerPreview(null);
     setupFixture();
   });
 
-  it("renders 5-hour and weekly meters when advanced mode is enabled", () => {
+  afterEach(() => {
+    if (container) {
+      container.remove();
+      container = null;
+    }
+    vi.useRealTimers();
+  });
+
+  it("renders 5-hour and weekly meters and refresh button when advanced mode is enabled", () => {
     setupFixture({ advanced: true, modelSelection: { instanceId: "codex", model: "o3-mini" } });
     const html = renderToStaticMarkup(createElement(SidebarUsageMeter));
 
@@ -92,6 +107,89 @@ describe("SidebarUsageMeter", () => {
     expect(html).toContain("80% left");
     expect(html).toContain("60% left");
     expect(html).toContain('role="meter"');
+    expect(html).toContain('data-testid="sidebar-usage-refresh-button"');
+    expect(html).toContain('aria-label="Refresh"');
+  });
+
+  it("triggers refresh when the refresh icon button is clicked", async () => {
+    setupFixture({ advanced: true, modelSelection: { instanceId: "codex", model: "o3-mini" } });
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(SidebarUsageMeter));
+    });
+
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="sidebar-usage-refresh-button"]');
+    expect(button).not.toBeNull();
+
+    await act(async () => {
+      button!.click();
+    });
+
+    expect(fixture.refresh).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("polls refresh every 1 minute while in advanced mode", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    setupFixture({ advanced: true, modelSelection: { instanceId: "codex", model: "o3-mini" } });
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(SidebarUsageMeter));
+    });
+
+    expect(fixture.refresh).not.toHaveBeenCalled();
+
+    // Advance 59 seconds: should not have triggered yet
+    await act(async () => {
+      vi.advanceTimersByTime(59_000);
+    });
+    expect(fixture.refresh).not.toHaveBeenCalled();
+
+    // Advance 1 more second (total 60s / 1 minute): should trigger refresh
+    await act(async () => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(fixture.refresh).toHaveBeenCalledTimes(1);
+
+    // Advance another 60s: should trigger again
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(fixture.refresh).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("does not poll refresh in Simple mode", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    setupFixture({ advanced: false });
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(createElement(SidebarUsageMeter));
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(120_000);
+    });
+    expect(fixture.refresh).not.toHaveBeenCalled();
+
+    await act(async () => {
+      root.unmount();
+    });
   });
 
   it("does not render in Simple mode (advanced: false)", () => {
