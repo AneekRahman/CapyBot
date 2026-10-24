@@ -34,6 +34,12 @@ cloudflare/control-plane/worker-configuration.d.ts
 *.keystore
 *.p12
 
+# Where the agents keep their private notes and scratch experiments. Nothing
+# in here is repo content: .agents is the skills/notes layer the agent sessions
+# read and write, .tmpexp is throwaway local scripts.
+.agents/
+.tmpexp/
+
 # per-tenant deploy settings (see deploy/.env.example)
 deploy/.env
 deploy/podman/.env
