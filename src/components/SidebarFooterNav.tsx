@@ -11,6 +11,7 @@ import { useSidebarToolsLayout, type SidebarDensity } from "@/lib/sidebar-prefer
 import { useStore } from "@/state/store";
 
 import { SidebarSectionHeader } from "./SidebarSectionHeader";
+import { SidebarUsageMeter } from "./SidebarUsageMeter";
 import { UpdateIndicator } from "./UpdateIndicator";
 
 
@@ -203,16 +204,19 @@ export function SidebarFooterNav({
     return <nav data-tour="tools" aria-label={t("sidebar.tools")} className={cn("flex flex-col items-center", rail ? "gap-0.5" : "gap-1")}>{rows}</nav>;
   }
   return (
-    <div data-tour="tools">
-      <SidebarSectionHeader
-        name={t("sidebar.tools")}
-        collapsed={collapsed}
-        alert={collapsed && automationsNeedYou}
-        onToggle={onToggleCollapsed}
-        reorderable={false}
-        dragging={false}
-      />
-      {!collapsed && <nav aria-label={t("sidebar.tools")} className={toolbar ? "flex flex-row gap-1" : "flex flex-col gap-0.5"}>{rows}</nav>}
-    </div>
+    <>
+      {advanced && <SidebarUsageMeter />}
+      <div data-tour="tools">
+        <SidebarSectionHeader
+          name={t("sidebar.tools")}
+          collapsed={collapsed}
+          alert={collapsed && automationsNeedYou}
+          onToggle={onToggleCollapsed}
+          reorderable={false}
+          dragging={false}
+        />
+        {!collapsed && <nav aria-label={t("sidebar.tools")} className={toolbar ? "flex flex-row gap-1" : "flex flex-col gap-0.5"}>{rows}</nav>}
+      </div>
+    </>
   );
 }

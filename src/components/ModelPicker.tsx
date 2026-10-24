@@ -16,6 +16,7 @@ import { cn } from "@/lib/cn";
 import { useMenuMotion } from "./MenuMotion";
 import { repeatedModelLabels, SimpleModelPane } from "./SimpleModelPane";
 import { useAdvancedMode } from "@/lib/interface-mode";
+import { setRailPickerPreview } from "@/lib/rail-picker-state";
 import { useOwnerOrAdmin } from "@/lib/use-owner-or-admin";
 
 import { t } from "@/lib/i18n";
@@ -741,6 +742,14 @@ export function ModelPicker({
   const official = railInstance?.models.options.filter((option) => !option.custom) ?? [];
   const custom = railInstance?.models.options.filter((option) => option.custom) ?? [];
   const currentModel = selection.instanceId === railInstance?.instanceId ? selection.model : undefined;
+  useEffect(() => {
+    if (open && railInstance) {
+      setRailPickerPreview({ instanceId: railInstance.instanceId, model: currentModel });
+    } else {
+      setRailPickerPreview(null);
+    }
+  }, [open, railInstance, currentModel]);
+  useEffect(() => () => setRailPickerPreview(null), []);
   const filteredOfficial = filterCustomModels(official, query);
   const compactOfficial = railInstance
     ? suggestedModels(official, railInstance.models.default, currentModel, COMPACT_MODEL_COUNT)

@@ -17,6 +17,7 @@ vi.mock("@/lib/sidebar-preferences", async (importOriginal) => ({
 }));
 vi.mock("./UpdateIndicator", () => ({ UpdateIndicator: () => null }));
 import { SidebarAppsButton, SidebarBottomButtons, SidebarFooterNav } from "./SidebarFooterNav";
+import { SidebarUsageMeter } from "./SidebarUsageMeter";
 
 type Props = { children?: ReactNode; [key: string]: unknown };
 function nodes(value: ReactNode): ReactElement<Props>[] {
@@ -291,5 +292,24 @@ describe("toolbar tools layout", () => {
       expect(unset).not.toContain(`title="${label}"`);
       expect(unset).not.toContain(`aria-label="${label}"`);
     }
+  });
+
+  describe("Usage meter placement", () => {
+    it("renders SidebarUsageMeter above the Tools header in Advanced mode", () => {
+      fixture.advanced = true;
+      const { nodes: tree } = render("comfortable");
+      const meterIndex = tree.findIndex((node) => node.type === SidebarUsageMeter);
+      const toolsIndex = tree.findIndex((node) => node.props?.["data-tour"] === "tools");
+      expect(meterIndex).toBeGreaterThanOrEqual(0);
+      expect(toolsIndex).toBeGreaterThanOrEqual(0);
+      expect(meterIndex).toBeLessThan(toolsIndex);
+    });
+
+    it("does not render SidebarUsageMeter in Simple mode or icons density", () => {
+      fixture.advanced = false;
+      expect(render("comfortable").nodes.some((node) => node.type === SidebarUsageMeter)).toBe(false);
+      fixture.advanced = true;
+      expect(render("icons").nodes.some((node) => node.type === SidebarUsageMeter)).toBe(false);
+    });
   });
 });
