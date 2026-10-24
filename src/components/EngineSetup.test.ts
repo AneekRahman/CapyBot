@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { EngineSetup, EngineUpdateNotice, installCommandFor, needsCli, needsSignIn } from "./EngineSetup";
+import { EngineSetup, EngineUpdateNotice, installCommandFor, needsCli, needsSignIn, GoogleSignInPaste } from "./EngineSetup";
 import { engineStatus } from "./ModelPicker";
 import { StoreProvider, type InstanceInfo } from "@/state/store";
 
@@ -83,6 +83,32 @@ describe("managed engine setup errors", () => {
     expect(engineStatus(engine)).toBe("Sign-in required");
     expect(markup).toContain("Sign in with Google");
     expect(markup).not.toContain("Install official Antigravity");
+  });
+});
+
+describe("google sign-in paste step", () => {
+  function renderPaste(props: { inWeb: boolean; busy?: Parameters<typeof GoogleSignInPaste>[0]["busy"] }): string {
+    return renderToStaticMarkup(createElement(GoogleSignInPaste, {
+      inWeb: props.inWeb,
+      callbackUrl: "",
+      setCallbackUrl: vi.fn(),
+      onSend: vi.fn(),
+      busy: props.busy ?? null,
+    }));
+  }
+
+  it("is expanded and plainly worded in a browser, where the redirect cannot open", () => {
+    const markup = renderPaste({ inWeb: true });
+    expect(markup).toContain('data-engine-signin-paste="true"');
+    expect(markup).not.toContain("<details");
+    expect(markup).toContain("127.0.0.1 address that does not open here");
+  });
+
+  it("stays collapsed behind the other-computer fallback in the desktop app", () => {
+    const markup = renderPaste({ inWeb: false });
+    expect(markup).toContain("<details");
+    expect(markup).toContain("Signing in from another computer?");
+    expect(markup).not.toContain("data-engine-signin-paste");
   });
 });
 

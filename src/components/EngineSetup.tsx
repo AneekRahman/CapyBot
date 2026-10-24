@@ -271,6 +271,10 @@ function ManagedEngineSetup({ instance, signInOnly }: { instance: InstanceInfo; 
   const [error, setError] = useState<string | null>(null);
   const [flow, setFlow] = useState<{ flowId: string; authorizationUrl: string } | null>(null);
   const [callbackUrl, setCallbackUrl] = useState("");
+  // In a browser served from the workspace there is no shell integration: Google's
+  // redirect to 127.0.0.1 lands on the visitor's machine, so the paste-and-forward
+  // step is the completion path, not an "other computer" corner case.
+  const inWeb = !window.ogb?.openExternal;
   const managed = instance.install!.managed!;
 
   useEffect(() => {
@@ -365,27 +369,66 @@ function ManagedEngineSetup({ instance, signInOnly }: { instance: InstanceInfo; 
           <button type="button" onClick={() => void check()} className="w-full rounded-lg bg-control px-3 py-2 text-[12px] font-semibold text-ink hover:bg-raised-hover">
             {busy === "check" ? t("common.checking") : t("engineSetup.finishedSignIn")}
           </button>
-          <details className="rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
-            <summary className="cursor-pointer select-none">{t("engineSetup.otherComputer")}</summary>
-            <p className="mt-2 leading-relaxed">{t("engineSetup.otherComputerHint")}</p>
-            <input
-              value={callbackUrl}
-              onChange={(event) => setCallbackUrl(event.target.value)}
-              placeholder="http://127.0.0.1:…/?code=…"
-              className="mt-2 w-full rounded-md border border-hairline bg-inset px-2 py-1.5 text-[11px] text-ink outline-none focus:border-accent"
-            />
-            <button
-              type="button"
-              disabled={!callbackUrl.trim() || busy !== null}
-              onClick={() => void complete()}
-              className="mt-2 w-full rounded-md bg-control px-2 py-1.5 font-medium text-ink disabled:opacity-50"
-            >
-              {busy === "complete" ? t("engineSetup.sending") : t("engineSetup.sendRedirect")}
-            </button>
-          </details>
+          <GoogleSignInPaste
+            inWeb={inWeb}
+            callbackUrl={callbackUrl}
+            setCallbackUrl={setCallbackUrl}
+            onSend={() => void complete()}
+            busy={busy}
+          />
         </>
       )}
       {error && <p className="text-[11.5px] text-danger">{error}</p>}
+    </div>
+  );
+}
+
+type EngineSetupBusy = "install" | "signin" | "complete" | "check";
+
+/** In the web app this is the normal way sign-in completes: Google's redirect
+ * goes to a 127.0.0.1 address on the visitor's machine, which cannot load, and
+ * the workspace receives the code by having the person paste that address.
+ * In the desktop app the redirect usually completes by itself and the same
+ * controls remain available behind the "other computer" fallback. */
+export function GoogleSignInPaste({ inWeb, callbackUrl, setCallbackUrl, onSend, busy }: {
+  inWeb: boolean;
+  callbackUrl: string;
+  setCallbackUrl: (value: string) => void;
+  onSend: () => void;
+  busy: EngineSetupBusy | null;
+}) {
+  const fields = (
+    <>
+      <input
+        value={callbackUrl}
+        onChange={(event) => setCallbackUrl(event.target.value)}
+        placeholder="http://127.0.0.1:…/?code=…"
+        className="mt-2 w-full rounded-md border border-hairline bg-inset px-2 py-1.5 text-[11px] text-ink outline-none focus:border-accent"
+      />
+      <button
+        type="button"
+        disabled={!callbackUrl.trim() || busy !== null}
+        onClick={onSend}
+        className="mt-2 w-full rounded-md bg-control px-2 py-1.5 font-medium text-ink disabled:opacity-50"
+      >
+        {busy === "complete" ? t("engineSetup.sending") : t("engineSetup.sendRedirect")}
+      </button>
+    </>
+  );
+  if (!inWeb) {
+    return (
+      <details className="rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
+        <summary className="cursor-pointer select-none">{t("engineSetup.otherComputer")}</summary>
+        <p className="mt-2 leading-relaxed">{t("engineSetup.otherComputerHint")}</p>
+        {fields}
+      </details>
+    );
+  }
+  return (
+    <div data-engine-signin-paste className="rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
+      <p className="leading-relaxed">{t("engineSetup.googleRedirectExpected")}</p>
+      <p className="mt-1.5 leading-relaxed">{t("engineSetup.googleRedirectPaste")}</p>
+      {fields}
     </div>
   );
 }

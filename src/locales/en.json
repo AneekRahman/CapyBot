@@ -2534,6 +2534,8 @@
   "engineSetup.finishedSignIn": "I finished signing in",
   "engineSetup.otherComputer": "Signing in from another computer?",
   "engineSetup.otherComputerHint": "After Google redirects to a page that cannot load, paste that page’s complete URL here.",
+  "engineSetup.googleRedirectExpected": "After Google sign-in, the browser is sent to a 127.0.0.1 address that does not open here. This workspace receives the sign-in code from the complete address of that failed page — the failing redirect is expected.",
+  "engineSetup.googleRedirectPaste": "Copy the complete address of the failed redirect page and paste it here to finish signing in.",
   "engineSetup.sending": "Sending…",
   "engineSetup.sendRedirect": "Send redirect",
   "engineSetup.googleNoLink": "Google sign-in did not return a link.",
