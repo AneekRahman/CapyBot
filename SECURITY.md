@@ -5,7 +5,7 @@
 Please **do not open a public issue** with sensitive security vulnerability details.
 
 - **If private vulnerability reporting is enabled on this repository,** use GitHub's private vulnerability reporting:
-  <https://github.com/AneekRahman/OpenMausBot/security/advisories/new>. The report stays visible
+  <https://github.com/AneekRahman/CapyBot/security/advisories/new>. The report stays visible
   only to you and the maintainer until a fix is published.
 - **If private vulnerability reporting is unavailable,** open a public issue requesting a private contact channel without including vulnerability details.
 - For vulnerabilities affecting upstream OpenMausBot, report them upstream at

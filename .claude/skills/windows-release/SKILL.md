@@ -9,10 +9,10 @@ description: Build and verify the Windows desktop build (NSIS installer + latest
 > **Do not target upstream:** When building or uploading releases from this fork,
 > never target upstream (`milind-soni/OpenMausBot` or `openmausbot-releases`).
 > Releases cut from this fork must target your own fork repository
-> (e.g. `AneekRahman/OpenMausBot`) or a designated release target.
+> (e.g. `AneekRahman/CapyBot`) or a designated release target.
 
 Builds `OpenMausBot-<version>-setup.exe` and its update feed for distribution
-on your fork repository (e.g. `https://github.com/AneekRahman/OpenMausBot/releases`).
+on your fork repository (e.g. `https://github.com/AneekRahman/CapyBot/releases`).
 
 **Scope: Windows only.** The macOS build is a separate flow (dmg + notarytool +
 staple) that must run on a Mac. This skill never touches mac artifacts — but see
@@ -65,7 +65,7 @@ Get-Content release\win-unpacked\resources\app-update.yml  # feed config
 - Missing `server/index.js` → `utilityProcess.fork` fails → the 🐭 "Couldn't start
   the bot server" page.
 - Missing `ui/index.html` → server has nothing to serve → black window.
-- `app-update.yml` must point at your fork repository (e.g. `AneekRahman/OpenMausBot`)
+- `app-update.yml` must point at your fork repository (e.g. `AneekRahman/CapyBot`)
   rather than upstream, and, while the build is unsigned, **must not contain `publisherName`** —
   electron-updater would reject every update as untrusted.
 
@@ -85,7 +85,7 @@ Upload to the **same tag** as the macOS release for that version, so one release
 carries both platforms. Ensure `$REPO` targets your fork repository:
 
 ```powershell
-$REPO = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "AneekRahman/OpenMausBot" }
+$REPO = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "AneekRahman/CapyBot" }
 Copy-Item release/OpenMausBot-<version>-setup.exe release/OpenMausBot-setup.exe
 gh release upload v<version> --repo $REPO `
   release/OpenMausBot-<version>-setup.exe `

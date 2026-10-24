@@ -2,14 +2,14 @@
 
 > [!NOTE]
 > **Fork Notice & Target Safety:**
-> This personal public fork (<https://github.com/AneekRahman/OpenMausBot>) does **not** publish
+> This personal public fork (<https://github.com/AneekRahman/CapyBot>) does **not** publish
 > pre-built binary releases or maintain official auto-update streams. Users are onboarded via
 > source builds (`pnpm dev` / `pnpm package:*`).
 >
 > The release automation documented below describes the upstream release process and serves
 > as a reference for maintainers who configure release workflows on their own forks.
 > Any automated releases or manual uploads cut from this fork must target the fork's own
-> repository (<https://github.com/AneekRahman/OpenMausBot>) and must **never** target or attempt
+> repository (<https://github.com/AneekRahman/CapyBot>) and must **never** target or attempt
 > to publish to upstream repositories (`milind-soni/OpenMausBot` or `openmausbot-releases`).
 
 For a normal release in upstream or a fully-configured fork, run **Actions → Prepare next release → Run workflow** and
@@ -56,7 +56,7 @@ refreshes it.
 `app-update.yml` is baked into every packaged desktop app. In upstream: builds through
 0.1.46 point to `milind-soni/openmausbot-releases`; newer builds point to
 `milind-soni/OpenMausBot`. For forks, `app-update.yml` should be pointed at the fork's
-own repository (e.g., `AneekRahman/OpenMausBot`) if auto-updates are enabled.
+own repository (e.g., `AneekRahman/CapyBot`) if auto-updates are enabled.
 
 1. In upstream, every new release was published byte-for-byte to both repositories during
    the bridge period.

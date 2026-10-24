@@ -11,7 +11,7 @@ under the proprietary OpenMausBot Enterprise License. Historical upstream commit
 in the repository history that contain enterprise code remain subject to their original
 upstream license terms; this repository does not relicense shared upstream history.
 
-In this checkout (<https://github.com/AneekRahman/OpenMausBot>), the `enterprise/`
+In this checkout (<https://github.com/AneekRahman/CapyBot>), the `enterprise/`
 directory has been excluded from the active tree. As designed upstream, without
 that directory the server reports `{"edition":"oss"}` and ordinary standalone
 operation is unchanged. The current tree is licensed under the Apache License 2.0.

@@ -51,8 +51,8 @@ writeFileSync(
       },
       files: ["cli.js", "dist-server", "dist", "skills", "LICENSE", "README.md"],
       engines: { node: ">=24" },
-      repository: { type: "git", url: "https://github.com/AneekRahman/OpenMausBot.git" },
-      homepage: "https://github.com/AneekRahman/OpenMausBot#readme",
+      repository: { type: "git", url: "https://github.com/AneekRahman/CapyBot.git" },
+      homepage: "https://github.com/AneekRahman/CapyBot#readme",
       keywords: ["openmausbot", "agents", "self-hosted", "server"],
     },
     null,
@@ -149,9 +149,9 @@ openmausbot run "Room Lead" "Rehearse the launch of https://example.com" --expor
 openmausbot help run       # every verb: doctor, run, wait, send, export, events, team, engine, connect, mcp
 \`\`\`
 
-[Setup guide](https://github.com/AneekRahman/OpenMausBot/blob/main/docs/cli-onboarding.md)
-· [Scripts and CI](https://github.com/AneekRahman/OpenMausBot/blob/main/docs/headless-cli.md)
-· [Hosting guide](https://github.com/AneekRahman/OpenMausBot/blob/main/docs/self-hosting.md)
+[Setup guide](https://github.com/AneekRahman/CapyBot/blob/main/docs/cli-onboarding.md)
+· [Scripts and CI](https://github.com/AneekRahman/CapyBot/blob/main/docs/headless-cli.md)
+· [Hosting guide](https://github.com/AneekRahman/CapyBot/blob/main/docs/self-hosting.md)
 `,
 );
 console.log(`npm package assembled at ${out} (openmausbot@${app.version})`);

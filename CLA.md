@@ -1,7 +1,7 @@
 # OpenMausBot Contributor License Agreement
 
 > **Notice for this fork:**
-> This personal public fork (<https://github.com/AneekRahman/OpenMausBot>) contains the open-source
+> This personal public fork (<https://github.com/AneekRahman/CapyBot>) contains the open-source
 > edition of OpenMausBot without the optional upstream `enterprise/` directory. All contributions to
 > this repository are submitted under the [Apache License 2.0](LICENSE) without requiring a CLA or
 > DCO sign-off (see [LICENSING.md](LICENSING.md)).

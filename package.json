@@ -3,10 +3,10 @@
   "private": true,
   "version": "0.1.125",
   "description": "A local-first chat app for running a team of AI agents.",
-  "homepage": "https://github.com/AneekRahman/OpenMausBot",
+  "homepage": "https://github.com/AneekRahman/CapyBot",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AneekRahman/OpenMausBot.git"
+    "url": "https://github.com/AneekRahman/CapyBot.git"
   },
   "author": {
     "name": "Milind Soni",

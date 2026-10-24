@@ -16,14 +16,14 @@ Talk to them like contacts. Watch them work. Approve what matters.
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![Electron](https://img.shields.io/badge/Electron-macOS%20%C2%B7%20Windows%20%C2%B7%20Ubuntu-2B2E3A?logo=electron&logoColor=9FEAF9)
 ![Agents](https://img.shields.io/badge/agents-Claude%20·%20Codex-d97757)
-[![Fork](https://img.shields.io/badge/fork-AneekRahman%2FOpenMausBot-blue)](https://github.com/AneekRahman/OpenMausBot)
+[![Fork](https://img.shields.io/badge/fork-AneekRahman%2FCapyBot-blue)](https://github.com/AneekRahman/CapyBot)
 [![Upstream Release](https://img.shields.io/github/v/release/milind-soni/OpenMausBot?label=upstream%20release&color=1084fe&cacheSeconds=300)](https://github.com/milind-soni/OpenMausBot/releases/latest)
 ![PRs](https://img.shields.io/badge/PRs-welcome-38d591)
 
 <br>
 
 <p>
-<b>Personal Public Fork</b> &nbsp;·&nbsp; <a href="https://github.com/AneekRahman/OpenMausBot">github.com/AneekRahman/OpenMausBot</a><br>
+<b>Personal Public Fork</b> &nbsp;·&nbsp; <a href="https://github.com/AneekRahman/CapyBot">github.com/AneekRahman/CapyBot</a><br>
 <sub>This fork publishes no pre-compiled binaries; see <a href="#quick-start">Quick start</a> to run from source.<br>
 Official upstream binary downloads: <a href="https://github.com/milind-soni/OpenMausBot/releases">milind-soni/OpenMausBot releases</a>.</sub>
 </p>
@@ -57,7 +57,7 @@ Official upstream binary downloads: <a href="https://github.com/milind-soni/Open
 
 > [!NOTE]
 > **About this fork:**
-> This repository is a sanitized, pure open-source personal fork (<https://github.com/AneekRahman/OpenMausBot>) of the upstream [OpenMausBot project](https://github.com/milind-soni/OpenMausBot) by Milind Soni and contributors.
+> This repository is a sanitized, pure open-source personal fork (<https://github.com/AneekRahman/CapyBot>) of the upstream [OpenMausBot project](https://github.com/milind-soni/OpenMausBot) by Milind Soni and contributors.
 >
 > **Key fork enhancements:**
 > - **Multi-Account Gemini Antigravity Support:** Unified account rail, browser-based sign-in flow, and direct account removal.
@@ -333,7 +333,7 @@ See [Run OpenMausBot from scripts and CI](docs/headless-cli.md).
 ### From source (recommended for this fork)
 
 ```sh
-git clone https://github.com/AneekRahman/OpenMausBot && cd OpenMausBot
+git clone https://github.com/AneekRahman/CapyBot && cd CapyBot
 pnpm install
 
 pnpm dev:server    # harness server → 127.0.0.1:8799

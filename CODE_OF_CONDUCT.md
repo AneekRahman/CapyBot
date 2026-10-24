@@ -11,6 +11,6 @@ The short version:
   with finite time.
 
 Unacceptable behavior can be reported to the repository maintainer through GitHub at
-<https://github.com/AneekRahman/OpenMausBot/issues>. Reports are handled confidentially.
+<https://github.com/AneekRahman/CapyBot/issues>. Reports are handled confidentially.
 Maintainers may edit, remove, or reject contributions and comments that violate this
 code, and may ban repeat offenders.
