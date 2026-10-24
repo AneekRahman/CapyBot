@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { createElement, useEffect } from "react";
+import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -186,6 +186,7 @@ describe("useComposerDictation", () => {
     // Stale transcript arrives
     flushSync(() => {
       transcriptCb?.({ text: "Late response" });
+      endCb?.({ code: 0 });
     });
 
     expect(onText).not.toHaveBeenCalled();

@@ -1,4 +1,3 @@
-import { ensureSpeechBridge, speechService } from "@/lib/speech-service";
 
 const browserCapabilities: DesktopCapabilities = {
   host: {

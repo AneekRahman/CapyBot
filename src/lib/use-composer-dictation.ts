@@ -7,7 +7,13 @@ export function useComposerDictation({ draftId, text, onText, available }: {
   text: string;
   onText: (text: string) => void;
   available: boolean;
-}) {
+}): {
+  recording: boolean;
+  transcribing: boolean;
+  speechError: string | null;
+  toggle: () => void;
+  stop: () => void;
+} {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
@@ -42,7 +48,7 @@ export function useComposerDictation({ draftId, text, onText, available }: {
         start: () => window.ogb!.speechStart(),
         stop: () => window.ogb!.speechStop(),
         onTranscript: (cb: (l: { text?: string; error?: string }) => void) => window.ogb!.onSpeechTranscript(cb),
-        onEnd: (cb: (e: { code: number; reason?: string }) => void) => window.ogb!.onSpeechEnd(cb),
+        onEnd: (cb: (e: { code: number | null; reason?: string }) => void) => window.ogb!.onSpeechEnd(cb),
       };
     }
     return {
@@ -50,7 +56,7 @@ export function useComposerDictation({ draftId, text, onText, available }: {
       start: () => speechService.start(),
       stop: () => speechService.stop(),
       onTranscript: (cb: (l: { text?: string; error?: string }) => void) => speechService.onSpeechTranscript(cb),
-      onEnd: (cb: (e: { code: number; reason?: string }) => void) => speechService.onSpeechEnd(cb),
+      onEnd: (cb: (e: { code: number | null; reason?: string }) => void) => speechService.onSpeechEnd(cb),
     };
   }, []);
 
