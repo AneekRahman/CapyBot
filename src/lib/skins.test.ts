@@ -46,7 +46,7 @@ describe("skins", () => {
 
   it("orders the curated skins with Pop as the top pick while keeping Meadow as default", () => {
     expect(SKIN_IDS).toEqual([
-      "pop", "midnight", "graphite", "meadow", "mocha", "stealth", "dracula", "rose-pine", "synthwave", "vesper", "kanagawa", "halloween",
+      "pop", "midnight", "graphite", "meadow", "mocha", "stealth", "dracula", "synthwave", "vesper", "halloween",
     ]);
     expect(DEFAULT_SKIN).toBe("meadow");
     expect(PRIOR_INSTALL_SKIN).toBe("midnight");
