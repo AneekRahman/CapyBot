@@ -1000,13 +1000,14 @@ export function Composer({
         {!locked && !busy && dictationAvailable && (
           <button
             onClick={toggleMic}
+            disabled={transcribing}
             aria-label={recording ? t("composer.dictation.stop") : t("composer.dictation.start")}
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-full",
               recording
                 ? "animate-pulse bg-danger/20 text-danger"
                 : transcribing
-                  ? "bg-accent/20 text-accent"
+                  ? "bg-accent/20 text-accent opacity-80 cursor-wait"
                   : advanced ? "text-ink-secondary hover:bg-raised hover:text-ink" : "bg-ink/[0.07] text-ink hover:bg-ink/[0.12]",
             )}
             title={

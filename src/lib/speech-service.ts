@@ -273,9 +273,9 @@ class SpeechService {
               this.emitTranscript({ text: remaining, partial: false });
             }
             this.active = false;
-            this.recognizer = null;
-            this.emitEnd({ code: 0 });
           }
+          this.recognizer = null;
+          this.emitEnd({ code: 0 });
         };
 
         recognition.start();
@@ -366,20 +366,28 @@ class SpeechService {
 
     recorder.onstop = async () => {
       this.clearVad();
-      const audioBlob = new Blob(this.audioChunks, { type: recorder.mimeType || "audio/webm" });
+      const chunks = this.audioChunks;
       this.audioChunks = [];
+      const mimeType = recorder.mimeType || "audio/webm";
+      const audioBlob = new Blob(chunks, { type: mimeType });
       if (this.mediaStream) {
         for (const track of this.mediaStream.getTracks()) track.stop();
         this.mediaStream = null;
       }
       this.mediaRecorder = null;
 
+      if (audioBlob.size === 0) {
+        this.emitEnd({ code: 0 });
+        return;
+      }
+
       try {
         const response = await fetch("/api/speech/transcribe", {
           method: "POST",
-          headers: { "Content-Type": audioBlob.type },
+          headers: { "Content-Type": audioBlob.type || mimeType },
           body: audioBlob,
           credentials: "include",
+          signal: typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(30000) : undefined,
         });
         if (response.ok) {
           const data = await response.json();
@@ -388,14 +396,15 @@ class SpeechService {
           }
           this.emitEnd({ code: 0 });
         } else {
-          this.serverTranscribeAvailable = false;
+          if (response.status === 501) {
+            this.serverTranscribeAvailable = false;
+          }
           const err = await response.json().catch(() => ({}));
           const message = err?.error?.message || "Transcription failed";
           this.emitTranscript({ error: message });
           this.emitEnd({ code: 1, reason: message });
         }
       } catch (err: unknown) {
-        this.serverTranscribeAvailable = false;
         const message = err instanceof Error ? err.message : "Network error during transcription";
         this.emitTranscript({ error: message });
         this.emitEnd({ code: 1, reason: message });
@@ -430,8 +439,7 @@ class SpeechService {
       try {
         this.mediaRecorder.stop();
       } catch {}
-    }
-    if (this.mediaStream) {
+    } else if (this.mediaStream) {
       for (const track of this.mediaStream.getTracks()) track.stop();
       this.mediaStream = null;
     }

@@ -167,4 +167,83 @@ describe("speechService", () => {
 
     unsubscribe();
   });
+
+  it("records audio via MediaRecorder and transcribes with /api/speech/transcribe on stop", async () => {
+    speechService.resetServerCheck();
+    let fetchCalled = false;
+    let fetchBody: any = null;
+    const mockFetch = vi.fn().mockImplementation(async (url: string, init?: any) => {
+      if (url === "/api/speech/transcribe" && (!init || init.method === "GET")) {
+        return { ok: true, json: async () => ({ available: true, engine: "elevenlabs" }) };
+      }
+      if (url === "/api/speech/transcribe" && init?.method === "POST") {
+        fetchCalled = true;
+        fetchBody = init.body;
+        return { ok: true, json: async () => ({ text: "Transcribed from ElevenLabs" }) };
+      }
+      return { ok: false };
+    });
+    vi.stubGlobal("fetch", mockFetch);
+    if (typeof window !== "undefined") {
+      (window as any).fetch = mockFetch;
+    }
+
+    const mockTrack = { stop: vi.fn() };
+    const mockStream = { getTracks: () => [mockTrack] };
+    const mockGetUserMedia = vi.fn().mockResolvedValue(mockStream);
+    vi.stubGlobal("navigator", {
+      mediaDevices: {
+        getUserMedia: mockGetUserMedia,
+      },
+    });
+    if (typeof window !== "undefined") {
+      (window as any).navigator = { mediaDevices: { getUserMedia: mockGetUserMedia } };
+    }
+
+    let mockRecorderInstance: any = null;
+    class MockMediaRecorder {
+      state = "recording";
+      mimeType = "audio/webm";
+      ondataavailable: ((e: any) => void) | null = null;
+      onstop: (() => void) | null = null;
+      constructor() {
+        mockRecorderInstance = this;
+      }
+      start() {}
+      stop() {
+        this.state = "inactive";
+        if (this.ondataavailable) {
+          this.ondataavailable({ data: new Blob(["audio-content"], { type: "audio/webm" }) });
+        }
+        if (this.onstop) {
+          setTimeout(() => this.onstop!(), 0);
+        }
+      }
+    }
+
+    vi.stubGlobal("MediaRecorder", MockMediaRecorder);
+    if (typeof window !== "undefined") {
+      (window as any).MediaRecorder = MockMediaRecorder;
+    }
+
+    const transcripts: Array<{ text?: string; partial?: boolean }> = [];
+    const ends: Array<{ code: number | null }> = [];
+    const unsubTranscript = speechService.onSpeechTranscript((l) => transcripts.push(l));
+    const unsubEnd = speechService.onSpeechEnd((e) => ends.push(e));
+
+    await speechService.start();
+    expect(mockRecorderInstance).not.toBeNull();
+
+    await speechService.stop();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(fetchCalled).toBe(true);
+    expect(transcripts).toEqual([{ text: "Transcribed from ElevenLabs", partial: false }]);
+    expect(ends).toEqual([{ code: 0 }]);
+    expect(mockTrack.stop).toHaveBeenCalled();
+
+    unsubTranscript();
+    unsubEnd();
+  });
 });

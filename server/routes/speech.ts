@@ -23,7 +23,6 @@ export async function readAudioBody(req: IncomingMessage, limit = MAX_AUDIO_BYTE
 }
 
 export async function defaultTranscribe(buffer: Buffer, mimeType: string): Promise<string> {
-  // 1. ElevenLabs Speech-to-Text (Scribe)
   let elevenKey: string | undefined = process.env.ELEVENLABS_API_KEY;
   try {
     const cfg = loadConfig();
@@ -31,9 +30,13 @@ export async function defaultTranscribe(buffer: Buffer, mimeType: string): Promi
   } catch {}
 
   if (elevenKey) {
+    const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : mimeType.includes("wav") ? "wav" : "webm";
+    const filename = `audio.${ext}`;
+    console.log(`[STT] Transcribing via ElevenLabs Scribe STT (${filename}, mime: ${mimeType}, ${buffer.length} bytes)...`);
+
     const form = new FormData();
     const blob = new Blob([buffer as any], { type: mimeType });
-    form.append("file", blob, "audio.webm");
+    form.append("file", blob, filename);
     form.append("model_id", "scribe_v1");
 
     const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
@@ -47,19 +50,26 @@ export async function defaultTranscribe(buffer: Buffer, mimeType: string): Promi
 
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as Record<string, any>;
-      throw new Error(body?.detail?.message || body?.message || `ElevenLabs STT returned ${res.status}`);
+      const errMsg = body?.detail?.message || body?.message || `ElevenLabs STT returned ${res.status}`;
+      console.error(`[STT] ElevenLabs STT API error (status ${res.status}):`, errMsg);
+      throw new Error(errMsg);
     }
 
     const data = (await res.json()) as { text?: string };
-    return data.text || "";
+    const text = data.text || "";
+    console.log(`[STT] ElevenLabs STT succeeded: "${text.slice(0, 60)}${text.length > 60 ? "..." : ""}"`);
+    return text;
   }
 
-  // 2. Groq Whisper (free & fast if configured)
   const groqKey = process.env.GROQ_API_KEY;
   if (groqKey) {
+    const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : mimeType.includes("wav") ? "wav" : "webm";
+    const filename = `audio.${ext}`;
+    console.log(`[STT] Transcribing via Groq Whisper (${filename}, ${buffer.length} bytes)...`);
+
     const form = new FormData();
     const blob = new Blob([buffer as any], { type: mimeType });
-    form.append("file", blob, "audio.webm");
+    form.append("file", blob, filename);
     form.append("model", "whisper-large-v3");
 
     const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
@@ -73,7 +83,9 @@ export async function defaultTranscribe(buffer: Buffer, mimeType: string): Promi
 
     if (res.ok) {
       const data = (await res.json()) as { text?: string };
-      return data.text || "";
+      const text = data.text || "";
+      console.log(`[STT] Groq Whisper succeeded: "${text.slice(0, 60)}${text.length > 60 ? "..." : ""}"`);
+      return text;
     }
   }
 
@@ -103,6 +115,7 @@ export function createSpeechRoutes(deps: SpeechTranscribeDeps = {}): RouteHandle
           engine = "aws-transcribe";
         }
       } catch {}
+      console.log(`[STT] Status probe: available=${available}, engine=${engine}`);
       return json(res, 200, { status: "ok", available, engine });
     }
 
@@ -113,21 +126,28 @@ export function createSpeechRoutes(deps: SpeechTranscribeDeps = {}): RouteHandle
     }
 
     const contentType = req.headers["content-type"] || "audio/webm";
+    console.log(`[STT] Incoming transcribe request, content-type=${contentType}`);
     let audioBuffer: Buffer;
     try {
       audioBuffer = await readAudioBody(req);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to read audio body";
+      console.error(`[STT] Failed to read audio body:`, message);
       return json(res, 413, { error: { code: "payload_too_large", message } });
     }
 
+    console.log(`[STT] Received audio buffer: ${audioBuffer.length} bytes`);
+
     if (audioBuffer.length === 0) {
+      console.warn(`[STT] Rejected empty audio body`);
       return json(res, 400, { error: { code: "invalid_input", message: "Audio body was empty" } });
     }
 
     try {
       if (deps.transcribeAudio) {
+        console.log(`[STT] Calling custom transcribeAudio handler...`);
         const text = await deps.transcribeAudio(audioBuffer, contentType);
+        console.log(`[STT] Custom transcribeAudio succeeded: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
         return json(res, 200, { text });
       }
 
@@ -136,6 +156,7 @@ export function createSpeechRoutes(deps: SpeechTranscribeDeps = {}): RouteHandle
         return json(res, 200, { text });
       } catch (sttErr: unknown) {
         if (sttErr instanceof Error && sttErr.message === "transcribe_unconfigured") {
+          console.warn(`[STT] Server transcription unconfigured`);
           return json(res, 501, {
             error: {
               code: "transcribe_unconfigured",
@@ -147,6 +168,7 @@ export function createSpeechRoutes(deps: SpeechTranscribeDeps = {}): RouteHandle
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Transcription failed";
+      console.error(`[STT] Transcribe endpoint returning 500:`, message);
       return json(res, 500, { error: { code: "transcribe_failed", message } });
     }
   };
