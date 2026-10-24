@@ -4,6 +4,11 @@
 
 const SKIN_CHROME = Object.freeze({
   pop: Object.freeze({ color: "#fdf5ea", symbolColor: "#3a322d" }),
+  cyberpop: Object.freeze({ color: "#13101c", symbolColor: "#c8bde3" }),
+  comic: Object.freeze({ color: "#f7f4ed", symbolColor: "#3e3b38" }),
+  clay: Object.freeze({ color: "#f0edf9", symbolColor: "#494164" }),
+  blueprint: Object.freeze({ color: "#0a2238", symbolColor: "#bae6fd" }),
+  arcade: Object.freeze({ color: "#17161c", symbolColor: "#d6d2e6" }),
   midnight: Object.freeze({ color: "#070707", symbolColor: "#b5b5b5" }),
   graphite: Object.freeze({ color: "#111214", symbolColor: "#b3b8c2" }),
   meadow: Object.freeze({ color: "#ffffff", symbolColor: "#4d5a52" }),

@@ -38,7 +38,7 @@ describe("skins", () => {
   it("selects a code-only light or dark palette in every nearest skin", () => {
     for (const id of SKIN_IDS) {
       const body = css.match(new RegExp(`\\[data-skin="${id}"\\]\\s*\\{([^}]*)\\}`))?.[1] ?? "";
-      const scheme = ["meadow", "pop"].includes(id) ? "light" : "dark";
+      const scheme = ["meadow", "pop", "comic", "clay"].includes(id) ? "light" : "dark";
       expect(body).toContain(`--code-color-scheme: ${scheme};`);
     }
     expect(css).toMatch(/\.chat-md \.shiki\s*\{\s*color-scheme:\s*var\(--code-color-scheme\);\s*\}/);
@@ -46,7 +46,21 @@ describe("skins", () => {
 
   it("orders the curated skins with Pop as the top pick while keeping Meadow as default", () => {
     expect(SKIN_IDS).toEqual([
-      "pop", "midnight", "graphite", "meadow", "mocha", "stealth", "dracula", "synthwave", "vesper", "halloween",
+      "pop",
+      "cyberpop",
+      "comic",
+      "clay",
+      "blueprint",
+      "arcade",
+      "midnight",
+      "graphite",
+      "meadow",
+      "mocha",
+      "stealth",
+      "dracula",
+      "synthwave",
+      "vesper",
+      "halloween",
     ]);
     expect(DEFAULT_SKIN).toBe("meadow");
     expect(PRIOR_INSTALL_SKIN).toBe("midnight");

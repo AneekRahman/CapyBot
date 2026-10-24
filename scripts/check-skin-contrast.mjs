@@ -182,7 +182,7 @@ for (const [id, tokens] of skins) {
 // The inverted bubbles (Meadow's green-black, Pop's ink) have
 // their own inherited context: the editor, labels, quotes and file chips
 // explicitly use these tokens, not parent color.
-for (const skinId of ["meadow", "pop"]) {
+for (const skinId of ["meadow", "pop", "comic", "clay"]) {
   const scope = css.match(new RegExp(`@scope \\(\\[data-skin="${skinId}"\\]\\) to \\(\\[data-skin\\]\\)\\s*\\{\\s*\\.bg-bubble-user\\s*\\{([^}]*)\\}`))?.[1];
   if (!scope) {
     failed = true;

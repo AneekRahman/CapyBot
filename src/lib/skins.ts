@@ -2,6 +2,11 @@ import { hasPriorRun } from "./prior-run";
 
 export const SKIN_IDS = [
   "pop",
+  "cyberpop",
+  "comic",
+  "clay",
+  "blueprint",
+  "arcade",
   "midnight",
   "graphite",
   "meadow",
@@ -22,6 +27,11 @@ export type Skin = {
 
 export const SKINS: readonly Skin[] = [
   { id: "pop", name: "Pop", tagline: "Cream paper, thick ink outlines, hard shadows. Chunky and cheerful." },
+  { id: "cyberpop", name: "Cyberpop", tagline: "Neo-brutalist cyberpunk. Violet night, laser cyan lines, hot neon stickers." },
+  { id: "comic", name: "Comic", tagline: "Halftone newsprint, pure black ink, primary punch. Golden age comic art." },
+  { id: "clay", name: "Clay", tagline: "Tactile claymorphism. Marshmallow lavender with pillowy extruded 3D bevels." },
+  { id: "blueprint", name: "Blueprint", tagline: "Architectural cyanotype. Deep cobalt graph paper with precision CAD drafting lines." },
+  { id: "arcade", name: "Arcade", tagline: "1980s coin-op CRT cabinet. Scanline mesh, coin-slot amber, dual-layer bevels." },
   { id: "midnight", name: "Midnight", tagline: "The original. Cool and dark." },
   { id: "graphite", name: "Graphite", tagline: "Quiet charcoal and softened steel blue." },
   { id: "meadow", name: "Meadow", tagline: "Fresh white with a calm green. The MausBot look." },
