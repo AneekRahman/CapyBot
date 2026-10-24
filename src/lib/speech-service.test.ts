@@ -32,6 +32,11 @@ describe("speechService", () => {
   });
 
   it("prioritizes MediaRecorder when available and falls back to Web Speech", async () => {
+    speechService.resetServerCheck();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ available: true }),
+    }));
     const mockGetUserMedia = vi.fn().mockRejectedValue(new Error("mic blocked"));
     vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: mockGetUserMedia } });
 
@@ -53,6 +58,36 @@ describe("speechService", () => {
     await speechService.start();
 
     expect(mockGetUserMedia).toHaveBeenCalled();
+    expect(startedWebSpeech).toBe(true);
+  });
+
+  it("falls back to Web Speech immediately when server transcribe is unconfigured", async () => {
+    speechService.resetServerCheck();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ available: false }),
+    }));
+    const mockGetUserMedia = vi.fn();
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: mockGetUserMedia } });
+
+    let startedWebSpeech = false;
+    class MockFallbackRecognition {
+      continuous = false;
+      interimResults = false;
+      onstart = () => {};
+      start() {
+        startedWebSpeech = true;
+        setTimeout(() => this.onstart(), 0);
+      }
+      stop() {}
+    }
+
+    vi.stubGlobal("SpeechRecognition", MockFallbackRecognition);
+    vi.stubGlobal("MediaRecorder", vi.fn());
+
+    await speechService.start();
+
+    expect(mockGetUserMedia).not.toHaveBeenCalled();
     expect(startedWebSpeech).toBe(true);
   });
 

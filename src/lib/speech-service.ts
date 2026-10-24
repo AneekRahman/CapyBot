@@ -39,9 +39,43 @@ class SpeechService {
   private vadInterval: any = null;
   private silenceTimer: any = null;
   private nativeDesktop = false;
+  private serverTranscribeAvailable: boolean | null = null;
+  private serverCheckPromise: Promise<boolean> | null = null;
 
   setNativeDesktop(isNative: boolean) {
     this.nativeDesktop = isNative;
+  }
+
+  resetServerCheck(): void {
+    this.serverTranscribeAvailable = null;
+    this.serverCheckPromise = null;
+  }
+
+  async checkServerTranscribe(): Promise<boolean> {
+    if (this.serverTranscribeAvailable !== null) return this.serverTranscribeAvailable;
+    if (this.serverCheckPromise) return this.serverCheckPromise;
+    const g = getGlobal();
+    if (!g.fetch) {
+      this.serverTranscribeAvailable = false;
+      return false;
+    }
+    this.serverCheckPromise = (async () => {
+      try {
+        const res = await g.fetch("/api/speech/transcribe", {
+          method: "GET",
+          credentials: "include",
+          signal: typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(3000) : undefined,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          this.serverTranscribeAvailable = Boolean(data?.available);
+          return this.serverTranscribeAvailable;
+        }
+      } catch {}
+      this.serverTranscribeAvailable = false;
+      return false;
+    })();
+    return this.serverCheckPromise;
   }
 
   isAvailable(): boolean {
@@ -111,12 +145,22 @@ class SpeechService {
     this.accumulatedFinalText = "";
 
     // 1. Primary option: Server-backed /api/speech/transcribe via MediaRecorder
+    // Uses server transcription when configured (e.g. ElevenLabs Scribe or AWS Transcribe)
     if (this.isServerTranscribeSupported()) {
+      let serverReady = false;
       try {
-        await this.startMediaRecorder(options);
-        return;
-      } catch (err) {
-        console.warn("MediaRecorder start failed, falling back to Web Speech API:", err);
+        serverReady = await this.checkServerTranscribe();
+      } catch {
+        serverReady = false;
+      }
+
+      if (serverReady) {
+        try {
+          await this.startMediaRecorder(options);
+          return;
+        } catch (err) {
+          console.warn("MediaRecorder start failed, falling back to Web Speech API:", err);
+        }
       }
     }
 
@@ -124,6 +168,16 @@ class SpeechService {
     const SpeechRec = g.SpeechRecognition || g.webkitSpeechRecognition;
     if (SpeechRec) {
       return this.startWebSpeech(SpeechRec, options);
+    }
+
+    // 3. If Web Speech is absent but MediaRecorder is supported, try MediaRecorder as last attempt
+    if (this.isServerTranscribeSupported()) {
+      try {
+        await this.startMediaRecorder(options);
+        return;
+      } catch (err) {
+        console.warn("MediaRecorder fallback failed:", err);
+      }
     }
 
     this.active = false;
@@ -325,6 +379,7 @@ class SpeechService {
           method: "POST",
           headers: { "Content-Type": audioBlob.type },
           body: audioBlob,
+          credentials: "include",
         });
         if (response.ok) {
           const data = await response.json();
@@ -333,12 +388,14 @@ class SpeechService {
           }
           this.emitEnd({ code: 0 });
         } else {
+          this.serverTranscribeAvailable = false;
           const err = await response.json().catch(() => ({}));
           const message = err?.error?.message || "Transcription failed";
           this.emitTranscript({ error: message });
           this.emitEnd({ code: 1, reason: message });
         }
       } catch (err: unknown) {
+        this.serverTranscribeAvailable = false;
         const message = err instanceof Error ? err.message : "Network error during transcription";
         this.emitTranscript({ error: message });
         this.emitEnd({ code: 1, reason: message });

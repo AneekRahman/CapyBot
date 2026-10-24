@@ -1,5 +1,6 @@
 // Server endpoint for speech transcription using Amazon Transcribe or local STT engines.
 import type { IncomingMessage } from "node:http";
+import { loadConfig } from "../config.ts";
 import { PASS, type RouteContext, type RouteHandler } from "./table.ts";
 
 export interface SpeechTranscribeDeps {
@@ -23,7 +24,12 @@ export async function readAudioBody(req: IncomingMessage, limit = MAX_AUDIO_BYTE
 
 export async function defaultTranscribe(buffer: Buffer, mimeType: string): Promise<string> {
   // 1. ElevenLabs Speech-to-Text (Scribe)
-  const elevenKey = process.env.ELEVENLABS_API_KEY;
+  let elevenKey: string | undefined = process.env.ELEVENLABS_API_KEY;
+  try {
+    const cfg = loadConfig();
+    elevenKey = cfg.tts?.key || elevenKey;
+  } catch {}
+
   if (elevenKey) {
     const form = new FormData();
     const blob = new Blob([buffer as any], { type: mimeType });
@@ -78,8 +84,30 @@ export function createSpeechRoutes(deps: SpeechTranscribeDeps = {}): RouteHandle
   return async ({ req, res, path, method, json }: RouteContext) => {
     if (path !== "/api/speech/transcribe") return PASS;
 
+    if (method === "GET") {
+      let available = Boolean(deps.transcribeAudio);
+      let engine = deps.transcribeAudio ? "custom" : "none";
+      try {
+        const cfg = loadConfig();
+        const elevenKey = cfg.tts?.key || process.env.ELEVENLABS_API_KEY;
+        const groqKey = process.env.GROQ_API_KEY;
+        const awsKey = process.env.AWS_ACCESS_KEY_ID;
+        if (elevenKey) {
+          available = true;
+          engine = "elevenlabs";
+        } else if (groqKey) {
+          available = true;
+          engine = "whisper";
+        } else if (awsKey) {
+          available = true;
+          engine = "aws-transcribe";
+        }
+      } catch {}
+      return json(res, 200, { status: "ok", available, engine });
+    }
+
     if (method !== "POST") {
-      res.writeHead(405, { allow: "POST" });
+      res.writeHead(405, { allow: "GET, POST" });
       res.end();
       return;
     }

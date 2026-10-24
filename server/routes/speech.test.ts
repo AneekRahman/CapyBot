@@ -47,11 +47,22 @@ describe("speechRoutes", () => {
     expect(res).toBe(PASS);
   });
 
-  it("returns 405 for non-POST methods", async () => {
-    const ctx = fakeContext({ method: "GET" });
+  it("returns 405 for unsupported methods", async () => {
+    const ctx = fakeContext({ method: "PUT" });
     await speechRoutes(ctx);
-    expect(ctx.res.writeHead).toHaveBeenCalledWith(405, { allow: "POST" });
+    expect(ctx.res.writeHead).toHaveBeenCalledWith(405, { allow: "GET, POST" });
     expect(ctx.res.end).toHaveBeenCalled();
+  });
+
+  it("handles GET to report transcription availability", async () => {
+    const jsonSpy = vi.fn();
+    const ctx = fakeContext({ method: "GET", jsonSpy });
+    await speechRoutes(ctx);
+    expect(jsonSpy).toHaveBeenCalledWith(
+      ctx.res,
+      200,
+      expect.objectContaining({ status: "ok" }),
+    );
   });
 
   it("returns 400 for empty audio body", async () => {
