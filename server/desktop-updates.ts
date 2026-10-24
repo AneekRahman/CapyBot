@@ -232,13 +232,25 @@ export async function recoverLocalVms(input: {
   status(target: LocalVmTarget): Promise<ContainerComputerStatus | null>;
   note(target: LocalVmTarget, status: ContainerComputerStatus | null): void;
   armIdle(target: LocalVmTarget): void;
+  cleanStuck?(target: LocalVmTarget): Promise<void>;
 }): Promise<void> {
   const settle = async (targets: LocalVmTarget[]) => {
     const statuses = await Promise.all(targets.map((target) => input.status(target)));
-    targets.forEach((target, index) => {
-      input.note(target, statuses[index]);
-      if (shouldArmLocalVmIdle(statuses[index])) input.armIdle(target);
-    });
+    for (let index = 0; index < targets.length; index++) {
+      const target = targets[index];
+      let status = statuses[index];
+      const isStuck = Boolean(status?.managed && (
+        status.container_state === "stopping" ||
+        status.container_state === "dead" ||
+        status.container_error?.includes("improper")
+      ));
+      if (isStuck && input.cleanStuck) {
+        await input.cleanStuck(target);
+        status = await input.status(target);
+      }
+      input.note(target, status);
+      if (shouldArmLocalVmIdle(status)) input.armIdle(target);
+    }
   };
   if (input.mode === "shared") return settle([SHARED_LOCAL_VM_TARGET]);
   const workspaces = input.mode === "pool"

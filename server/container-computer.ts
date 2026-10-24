@@ -295,6 +295,8 @@ export interface ContainerComputerStatus {
   imageMatches: boolean;
   managed: boolean;
   container: "running" | "stopped" | "missing";
+  container_state?: string | null;
+  container_error?: string | null;
   network: "loopback" | "unsafe" | "unknown";
   security: "hardened" | "unsafe" | "unknown";
   persistence: "durable" | "unsafe" | "unknown";
@@ -328,6 +330,8 @@ function emptyStatus(platform: NodeJS.Platform, target: LocalVmTarget): Containe
     imageMatches: false,
     managed: false,
     container: "missing",
+    container_state: null,
+    container_error: null,
     network: "unknown",
     security: "unknown",
     persistence: "unknown",
@@ -539,6 +543,8 @@ export async function containerComputerStatus(
       }>;
       const detail = inspected[0];
       status.container = detail?.status?.state === "running" ? "running" : "stopped";
+      status.container_state = detail?.status?.state ?? (detail?.status?.state === "running" ? "running" : "stopped");
+      status.container_error = null;
       status.network = applePortsAreLocal(detail?.configuration?.publishedPorts) ? "loopback" : "unsafe";
       status.viewer_port = appleViewerPort(detail?.configuration?.publishedPorts, target.viewerPort ?? HOST_VIEWER_PORT);
       const appleImage =
@@ -576,11 +582,19 @@ export async function containerComputerStatus(
         }>;
         EffectiveCaps?: string[];
         BoundingCaps?: string[];
-        State?: { Running?: boolean; FinishedAt?: string };
+        State?: {
+          Running?: boolean;
+          FinishedAt?: string;
+          Status?: string;
+          Error?: string;
+          Dead?: boolean;
+        };
         Image?: string;
       }>;
       const detail = inspected[0];
       status.container = detail?.State?.Running ? "running" : "stopped";
+      status.container_state = detail?.State?.Status ?? (detail?.State?.Running ? "running" : "stopped");
+      status.container_error = detail?.State?.Error || null;
       status.stopped_at = status.container === "stopped" ? detail?.State?.FinishedAt ?? null : null;
       status.network = dockerPortsAreLocal(detail?.HostConfig?.PortBindings) ? "loopback" : "unsafe";
       status.viewer_port = dockerViewerPort(detail?.NetworkSettings?.Ports, target.viewerPort);
@@ -967,6 +981,17 @@ async function prepareManagedImage(runtime: Runtime, runner: CommandRunner, plat
   }
 }
 
+export function isImproperContainerStateError(error: unknown): boolean {
+  const message = error instanceof Error
+    ? `${error.message} ${(error as { stderr?: string }).stderr ?? ""}`
+    : String(error);
+  return /container state improper/i.test(message)
+    || /must be in Created or Stopped state/i.test(message)
+    || /cannot start a dead container/i.test(message)
+    || /is not in valid state/i.test(message)
+    || /address already in use/i.test(message);
+}
+
 export async function containerComputerAction(
   action: LifecycleAction,
   runner: CommandRunner = sh,
@@ -1006,6 +1031,31 @@ export async function containerComputerAction(
 
   if (action === "pull") {
     await prepareManagedImage(runtime, runner, platform);
+  } else if (action === "start") {
+    const isImproperState = before.managed && (
+      before.container_state === "stopping" ||
+      before.container_state === "dead" ||
+      Boolean(before.container_error?.includes("improper"))
+    );
+    if (isImproperState) {
+      await runner(runtime, ["rm", runtime === "container" ? "--force" : "-f", target.containerName], 60_000);
+      await ensureVmWorkspace(platform, target);
+      const runArgs = containerRunArgs(runtime, randomBytes(6).toString("base64url"), target);
+      await runner(runtime, runArgs, 2 * 60_000);
+    } else {
+      try {
+        await runner(runtime, [action, target.containerName], 2 * 60_000);
+      } catch (error) {
+        if (before.managed && isImproperContainerStateError(error)) {
+          await runner(runtime, ["rm", runtime === "container" ? "--force" : "-f", target.containerName], 60_000);
+          await ensureVmWorkspace(platform, target);
+          const runArgs = containerRunArgs(runtime, randomBytes(6).toString("base64url"), target);
+          await runner(runtime, runArgs, 2 * 60_000);
+        } else {
+          throw error;
+        }
+      }
+    }
   } else {
     if (action === "run") await ensureVmWorkspace(platform, target);
     const args =

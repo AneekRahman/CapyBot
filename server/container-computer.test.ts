@@ -42,12 +42,17 @@ import {
 } from "./container-computer.ts";
 import { PIDS_LIMIT } from "./container-limits.ts";
 
-function runner(responses: Record<string, string | Error>) {
+function runner(responses: Record<string, string | Error | (() => string | Error)>) {
   const calls: string[] = [];
   const run: CommandRunner = async (command, args) => {
     const key = [command, ...args].join(" ");
     calls.push(key);
-    const response = responses[key];
+    let response = responses[key];
+    if (response === undefined) {
+      const prefix = Object.keys(responses).find((p) => p.endsWith(" ") && key.startsWith(p));
+      if (prefix) response = responses[prefix];
+    }
+    if (typeof response === "function") response = response();
     if (response instanceof Error || response === undefined) {
       throw response ?? new Error(`unexpected command: ${key}`);
     }
@@ -1043,6 +1048,78 @@ describe("containerComputerAction", () => {
     await containerComputerAction("start", fake.run, "linux");
     expect(fake.calls).toContain(`docker start ${CONTAINER}`);
     expect(fake.calls.some(call => call.includes(" rm ") || call.includes(" run "))).toBe(false);
+  });
+
+  it("automatically recovers a desktop stuck in stopping status by recreating it", async () => {
+    let running = false;
+    const fake = runner({
+      "/usr/bin/which docker": "docker\n",
+      "/usr/bin/which podman": new Error("missing"),
+      "docker info --format {{.ServerVersion}}": "29\n",
+      [`docker image inspect ${IMAGE}`]: preparedImageInspect(),
+      [`docker inspect ${CONTAINER}`]: () =>
+        readyInspect({
+          State: running
+            ? { Running: true }
+            : { Running: false, Status: "stopping", FinishedAt: "2026-10-01T12:00:00Z" },
+        }),
+      [`docker rm -f ${CONTAINER}`]: CONTAINER,
+      [`docker run `]: () => {
+        running = true;
+        return CONTAINER;
+      },
+      [versionProbe]: `cua-driver ${CUA_DRIVER_VERSION}\n`,
+      [statusProbe]: "running\n",
+      [healthProbe]: JSON.stringify({ schema_version: "1", overall: "ok", checks: [] }),
+      [readinessProbe]: "{}\n",
+      [readinessRead]: validPng.toString("base64"),
+    });
+
+    const status = await containerComputerStatus(fake.run, "linux");
+    expect(status.container_state).toBe("stopping");
+    expect(localVmResumable(status)).toBe(true);
+
+    const started = await containerComputerAction("start", fake.run, "linux");
+    expect(fake.calls).toContain(`docker rm -f ${CONTAINER}`);
+    expect(fake.calls.some(call => call.includes("docker run "))).toBe(true);
+    expect(fake.calls).not.toContain(`docker start ${CONTAINER}`);
+    expect(started.container).toBe("running");
+  });
+
+  it("automatically recovers when start fails with container state improper", async () => {
+    let running = false;
+    const fake = runner({
+      "/usr/bin/which docker": "docker\n",
+      "/usr/bin/which podman": new Error("missing"),
+      "docker info --format {{.ServerVersion}}": "29\n",
+      [`docker image inspect ${IMAGE}`]: preparedImageInspect(),
+      [`docker inspect ${CONTAINER}`]: () =>
+        readyInspect({
+          State: running
+            ? { Running: true }
+            : { Running: false, Status: "exited", FinishedAt: "2026-10-01T12:00:00Z" },
+        }),
+      [`docker start ${CONTAINER}`]: new Error("Error: container openmausbot-computer must be in Created or Stopped state to be started: container state improper"),
+      [`docker rm -f ${CONTAINER}`]: CONTAINER,
+      [`docker run `]: () => {
+        running = true;
+        return CONTAINER;
+      },
+      [versionProbe]: `cua-driver ${CUA_DRIVER_VERSION}\n`,
+      [statusProbe]: "running\n",
+      [healthProbe]: JSON.stringify({ schema_version: "1", overall: "ok", checks: [] }),
+      [readinessProbe]: "{}\n",
+      [readinessRead]: validPng.toString("base64"),
+    });
+
+    const status = await containerComputerStatus(fake.run, "linux");
+    expect(localVmResumable(status)).toBe(true);
+
+    const started = await containerComputerAction("start", fake.run, "linux");
+    expect(fake.calls).toContain(`docker start ${CONTAINER}`);
+    expect(fake.calls).toContain(`docker rm -f ${CONTAINER}`);
+    expect(fake.calls.some(call => call.includes("docker run "))).toBe(true);
+    expect(started.container).toBe("running");
   });
 });
 

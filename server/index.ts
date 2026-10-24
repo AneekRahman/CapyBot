@@ -6751,6 +6751,7 @@ void recoverLocalVms({
   mode: localVmMode(cfg), seats: localVmMaxInstances(cfg), bots: store.bots, seen: localVmSeen,
   status: (target) => containerComputerStatus(undefined, undefined, target).catch(() => null),
   note: noteLocalVmSeen, armIdle: (target) => localVmIdleFor(target).touch(),
+  cleanStuck: (target) => containerComputerAction("remove", undefined, undefined, target).then(() => {}).catch(() => {}),
 }).then(() => localVmUpdates.sweep()).catch(() => {});
 
 async function localVmInventoryPayload() {
