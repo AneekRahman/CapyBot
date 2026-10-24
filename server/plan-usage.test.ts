@@ -534,6 +534,58 @@ describe("plan usage fetcher", () => {
     });
   });
 
+  it("treats Antigravity quota 403 as consumer account and falls back to userinfo and ledger metrics", async () => {
+    const fetchImpl = vi.fn<PlanFetch>(async (url) => {
+      if (url.includes("oauth2.googleapis.com")) {
+        return jsonResponse({ access_token: "active-token" });
+      }
+      if (url.includes("retrieveUserQuotaSummary")) {
+        return jsonResponse({ error: { code: 403, message: "Subscription required" } }, 403);
+      }
+      if (url.includes("userinfo")) {
+        return jsonResponse({ email: "user@example.com" });
+      }
+      if (url.includes("loadCodeAssist")) {
+        return jsonResponse({
+          allowedTiers: [{ id: "standard-tier", name: "Gemini Code Assist" }],
+        });
+      }
+      return jsonResponse({});
+    });
+
+    const report = await fetchPlanUsage([account("antigravity")], {
+      fetch: fetchImpl,
+      now: () => NOW,
+      readText: () => JSON.stringify({
+        at: new Date(NOW - 3600_000).toISOString(),
+        instanceId: "antigravity",
+        driverKind: "antigravityAgent",
+        model: "gemini-3.8-flash-high",
+      }),
+      credentials: {
+        read: () => ({
+          token: JSON.stringify({ client_id: "c", client_secret: "s", refresh_token: "r" }),
+          accountId: null,
+          expired: false,
+        }),
+      },
+    });
+
+    expect(report.providers[0]).toMatchObject({
+      id: "antigravity",
+      name: "Google Gemini (user@example.com)",
+      driver: "antigravity",
+      plan: "Gemini Code Assist",
+      ok: true,
+      authenticated: true,
+      error: null,
+      fiveHour: { available: true },
+      weekly: { available: true },
+    });
+    expect(report.providers[0].models).toHaveLength(1);
+    expect(report.providers[0].models[0]?.name).toBe("Gemini 3.8 Flash High");
+  });
+
   it("lists configured Claude, Codex, Grok, and Antigravity accounts and skips other engines", () => {
     expect(planAccountsFromInstances({
       claude: { driver: "claudeAgent", displayName: "  Personal Claude  ", config: { configDir: "/tmp/claude" } },

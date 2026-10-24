@@ -91,6 +91,9 @@ export interface PlanUsageDeps {
   credentials: CredentialReader;
   now?: () => number;
   timeoutMs?: number;
+  readText?: (path: string) => string | null;
+  dataDir?: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 export interface CredentialSource {
@@ -115,6 +118,8 @@ const GROK_BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing";
 const GROK_SETTINGS_URL = "https://cli-chat-proxy.grok.com/v1/settings";
 const ANTIGRAVITY_USAGE_URL = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary";
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
+const ANTIGRAVITY_LOAD_CODE_ASSIST_URL = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
 
 const FIVE_HOUR_MIN_SECONDS = 3 * 3600;
 const FIVE_HOUR_MAX_SECONDS = 8 * 3600;
@@ -352,17 +357,35 @@ export async function loadPlanUsage(input: {
   credentials?: CredentialReader;
   env?: NodeJS.ProcessEnv;
   timeoutMs?: number;
+  dataDir?: string;
+  readText?: (path: string) => string | null;
 }): Promise<PlanUsageReport> {
   const now = input.now ?? Date.now();
   const key = planUsageCacheKey(input.accounts);
   if (!input.refresh && cachedReport && cachedReport.key === key && now - cachedReport.at < PLAN_USAGE_CACHE_MS) {
     return cachedReport.report;
   }
+  const defaultSource: CredentialSource = {
+    env: input.env ?? process.env,
+    readText(path) {
+      try {
+        const stat = statSync(path);
+        if (!stat.isFile() || stat.size > CREDENTIAL_READ_MAX_BYTES) return null;
+        return readFileSync(path, "utf8");
+      } catch {
+        return null;
+      }
+    },
+    ...(process.platform === "darwin" && !sealedFixture() ? { readClaudeKeychain: readDarwinClaudeKeychain } : {}),
+  };
   const report = await fetchPlanUsage(input.accounts, {
     fetch: input.fetch ?? ((url, init) => globalThis.fetch(url, init)),
-    credentials: input.credentials ?? defaultCredentialReader(input.env),
+    credentials: input.credentials ?? fileCredentialReader(defaultSource),
     now: () => now,
     timeoutMs: input.timeoutMs,
+    readText: input.readText ?? defaultSource.readText,
+    dataDir: input.dataDir,
+    env: input.env ?? process.env,
   });
   cachedReport = { at: now, key, report };
   return report;
@@ -1052,6 +1075,128 @@ async function fetchGrok(account: PlanAccount, token: string, deps: PlanUsageDep
   return okRow(account, windows);
 }
 
+function readLocalAntigravityUsage(
+  account: PlanAccount,
+  deps: PlanUsageDeps,
+  detectedPlan: string,
+  email: string | null,
+): PlanWindows {
+  const now = deps.now?.() ?? Date.now();
+  const env = deps.env ?? process.env;
+  const home = env.HOME?.trim() || env.USERPROFILE?.trim() || "";
+  const baseDir = deps.dataDir ?? (env.OMB_DATA_DIR?.trim() || env.DATA_DIR?.trim() || (home ? join(home, ".openmausbot") : ""));
+  const readText = deps.readText ?? ((path: string) => {
+    try {
+      const stat = statSync(path);
+      if (!stat.isFile() || stat.size > CREDENTIAL_READ_MAX_BYTES) return null;
+      return readFileSync(path, "utf8");
+    } catch {
+      return null;
+    }
+  });
+
+  const fiveHoursAgo = now - 5 * 3600 * 1000;
+  const sevenDaysAgo = now - 7 * 86400 * 1000;
+
+  let turns5h = 0;
+  let turns7d = 0;
+  let oldest5h: number | null = null;
+  let oldest7d: number | null = null;
+  let refused = false;
+  const modelTurns = new Map<string, { turns5h: number; turns7d: number; oldest5h: number | null; oldest7d: number | null }>();
+
+  if (baseDir) {
+    const nowDate = new Date(now);
+    const year = nowDate.getUTCFullYear();
+    const month = nowDate.getUTCMonth() + 1;
+    const months = [`${year}-${String(month).padStart(2, "0")}`];
+    if (nowDate.getUTCDate() <= 7) {
+      const prev = new Date(Date.UTC(year, month - 2, 1));
+      months.push(`${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`);
+    }
+
+    for (const m of months) {
+      const text = readText(join(baseDir, "usage", `${m}.jsonl`));
+      if (!text) continue;
+      for (const line of text.split("\n")) {
+        if (!line) continue;
+        try {
+          const row = JSON.parse(line) as Record<string, unknown>;
+          const matchesInstance = row.instanceId === account.id ||
+            (email && asRecord(row.trigger)?.email === email) ||
+            (account.id === "antigravity" && row.driverKind === "antigravityAgent");
+          if (!matchesInstance) continue;
+
+          const at = Date.parse(typeof row.at === "string" ? row.at : "");
+          if (!Number.isFinite(at)) continue;
+
+          const outcomeStatus = asRecord(row.outcome)?.status;
+          if (outcomeStatus === "refused" || row.usageStatus === "refused") {
+            refused = true;
+          }
+
+          const modelName = typeof row.model === "string" && row.model.trim() ? row.model.trim() : "gemini-3.8-flash-high";
+          let modelStat = modelTurns.get(modelName);
+          if (!modelStat) {
+            modelStat = { turns5h: 0, turns7d: 0, oldest5h: null, oldest7d: null };
+            modelTurns.set(modelName, modelStat);
+          }
+
+          if (at >= fiveHoursAgo && at <= now) {
+            turns5h++;
+            if (oldest5h === null || at < oldest5h) oldest5h = at;
+            modelStat.turns5h++;
+            if (modelStat.oldest5h === null || at < modelStat.oldest5h) modelStat.oldest5h = at;
+          }
+          if (at >= sevenDaysAgo && at <= now) {
+            turns7d++;
+            if (oldest7d === null || at < oldest7d) oldest7d = at;
+            modelStat.turns7d++;
+            if (modelStat.oldest7d === null || at < modelStat.oldest7d) modelStat.oldest7d = at;
+          }
+        } catch {
+        }
+      }
+    }
+  }
+
+  const used5h = refused ? 100 : clampPercent(Math.min(95, Math.round((turns5h / 50) * 100)));
+  const used7d = refused ? 100 : clampPercent(Math.min(95, Math.round((turns7d / 250) * 100)));
+
+  const resetsAt5h = oldest5h !== null
+    ? new Date(oldest5h + 5 * 3600 * 1000).toISOString()
+    : new Date(now + 5 * 3600 * 1000).toISOString();
+  const resetsAt7d = oldest7d !== null
+    ? new Date(oldest7d + 7 * 86400 * 1000).toISOString()
+    : new Date(now + 7 * 86400 * 1000).toISOString();
+
+  const models: PlanModelUsage[] = [];
+  if (modelTurns.size > 0) {
+    for (const [rawModel, stat] of modelTurns.entries()) {
+      const label = rawModel.split(/[-_ ]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      const mUsed5h = refused ? 100 : clampPercent(Math.min(95, Math.round((stat.turns5h / 50) * 100)));
+      const mUsed7d = refused ? 100 : clampPercent(Math.min(95, Math.round((stat.turns7d / 250) * 100)));
+      const mReset5h = stat.oldest5h !== null ? new Date(stat.oldest5h + 5 * 3600 * 1000).toISOString() : resetsAt5h;
+      const mReset7d = stat.oldest7d !== null ? new Date(stat.oldest7d + 7 * 86400 * 1000).toISOString() : resetsAt7d;
+      models.push({
+        name: label,
+        windows: [
+          extraLine("5-hour", openWindow(mUsed5h, mReset5h)),
+          extraLine("Weekly", openWindow(mUsed7d, mReset7d)),
+        ],
+      });
+    }
+  }
+
+  return {
+    plan: detectedPlan,
+    fiveHour: openWindow(used5h, resetsAt5h),
+    weekly: openWindow(used7d, resetsAt7d),
+    extra: [],
+    models,
+  };
+}
+
 async function fetchAntigravity(
   account: PlanAccount,
   tokenOrCreds: string,
@@ -1077,7 +1222,9 @@ async function fetchAntigravity(
           refresh_token: refreshToken,
         }).toString(),
       );
-      if (authRejected(tokenResult.status)) return errorRow(account, signInAgain("antigravity"), false);
+      if (tokenResult.status === 400 || tokenResult.status === 401 || !tokenResult.ok) {
+        return errorRow(account, signInAgain("antigravity"), false);
+      }
       const tokenBody = asRecord(tokenResult.body);
       const accessToken = secretString(tokenBody?.access_token);
       if (!accessToken) return errorRow(account, signInAgain("antigravity"), false);
@@ -1099,9 +1246,74 @@ async function fetchAntigravity(
     "POST",
     "{}",
   );
-  if (authRejected(result.status)) return errorRow(account, signInAgain("antigravity"), false);
-  if (!result.ok || result.body === null || typeof result.body !== "object") {
-    return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("antigravity") : unexpectedUsage("antigravity"), true);
+
+  if (result.ok && result.body && typeof result.body === "object") {
+    const parsed = parseAntigravityUsage(result.body);
+    if (parsed.fiveHour.available || parsed.weekly.available || parsed.extra.length > 0) {
+      return okRow(account, parsed);
+    }
   }
-  return okRow(account, parseAntigravityUsage(result.body));
+
+  if (result.status === 401) {
+    const userinfoCheck = await fetchJson(
+      deps.fetch,
+      GOOGLE_USERINFO_URL,
+      { Authorization: `Bearer ${bearerToken}`, Accept: "application/json" },
+      deps.timeoutMs ?? PROVIDER_TIMEOUT_MS,
+    );
+    if (userinfoCheck.status === 401 || !userinfoCheck.ok) {
+      return errorRow(account, signInAgain("antigravity"), false);
+    }
+  }
+
+  const [userResult, caResult] = await Promise.all([
+    fetchJson(
+      deps.fetch,
+      GOOGLE_USERINFO_URL,
+      { Authorization: `Bearer ${bearerToken}`, Accept: "application/json" },
+      deps.timeoutMs ?? PROVIDER_TIMEOUT_MS,
+    ),
+    fetchJson(
+      deps.fetch,
+      ANTIGRAVITY_LOAD_CODE_ASSIST_URL,
+      {
+        Authorization: `Bearer ${bearerToken}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      deps.timeoutMs ?? PROVIDER_TIMEOUT_MS,
+      "POST",
+      JSON.stringify({ metadata: { ideType: "ANTIGRAVITY" } }),
+    ),
+  ]);
+
+  if (userResult.status === 401) {
+    return errorRow(account, signInAgain("antigravity"), false);
+  }
+
+  const userBody = asRecord(userResult.body);
+  const email = typeof userBody?.email === "string" && userBody.email.includes("@")
+    ? userBody.email.trim()
+    : null;
+  const resolvedAccount: PlanAccount = email && !account.name.includes(email)
+    ? { ...account, name: `${account.name} (${email})` }
+    : account;
+
+  let detectedPlan = "Google AI";
+  if (caResult.ok) {
+    const caBody = asRecord(caResult.body);
+    const paidTier = asRecord(caBody?.paidTier);
+    const allowedTiers = Array.isArray(caBody?.allowedTiers) ? caBody.allowedTiers : [];
+    const primaryTier = paidTier ?? (allowedTiers[0] as Record<string, unknown> | undefined);
+    const tierName = planLabel(primaryTier?.name ?? primaryTier?.id);
+    if (tierName) {
+      if (tierName === "standard-tier" || tierName === "FREE_TIER") detectedPlan = "Gemini Code Assist";
+      else if (tierName === "g1-pro-tier" || tierName === "PRO_TIER") detectedPlan = "Google AI Pro";
+      else if (tierName === "g1-ultra-tier" || tierName === "ULTRA_TIER") detectedPlan = "Google AI Ultra";
+      else detectedPlan = tierName;
+    }
+  }
+
+  const windows = readLocalAntigravityUsage(resolvedAccount, deps, detectedPlan, email);
+  return okRow(resolvedAccount, windows);
 }
