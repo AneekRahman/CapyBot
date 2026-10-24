@@ -1,14 +1,18 @@
 ---
 name: windows-release
-description: Build and verify the Windows desktop build (NSIS installer + latest.yml) for the canonical OpenMausBot release and its legacy updater mirror. Use when cutting a release, shipping a new version to Windows users, or when a Windows user reports they are stuck on an old version. Windows only — does not cover the macOS dmg/notarization flow.
+description: Build and verify the Windows desktop build (NSIS installer + latest.yml) for OpenMausBot releases. Use when building, testing, or releasing a Windows version for your fork. Windows only — does not cover the macOS dmg/notarization flow. WARNING: Never target upstream repositories.
 ---
 
 # Windows release
 
-Ships `OpenMausBot-<version>-setup.exe` and its update feed to
-[milind-soni/OpenMausBot](https://github.com/milind-soni/OpenMausBot/releases).
-The unified release workflow mirrors the same bytes to the legacy releases
-repository for apps installed before the updater migration.
+> [!WARNING]
+> **Do not target upstream:** When building or uploading releases from this fork,
+> never target upstream (`milind-soni/OpenMausBot` or `openmausbot-releases`).
+> Releases cut from this fork must target your own fork repository
+> (e.g. `AneekRahman/OpenMausBot`) or a designated release target.
+
+Builds `OpenMausBot-<version>-setup.exe` and its update feed for distribution
+on your fork repository (e.g. `https://github.com/AneekRahman/OpenMausBot/releases`).
 
 **Scope: Windows only.** The macOS build is a separate flow (dmg + notarytool +
 staple) that must run on a Mac. This skill never touches mac artifacts — but see
@@ -61,9 +65,9 @@ Get-Content release\win-unpacked\resources\app-update.yml  # feed config
 - Missing `server/index.js` → `utilityProcess.fork` fails → the 🐭 "Couldn't start
   the bot server" page.
 - Missing `ui/index.html` → server has nothing to serve → black window.
-- `app-update.yml` must point at `milind-soni/OpenMausBot` and, while the
-  build is unsigned, **must not contain `publisherName`** — electron-updater would
-  reject every update as untrusted.
+- `app-update.yml` must point at your fork repository (e.g. `AneekRahman/OpenMausBot`)
+  rather than upstream, and, while the build is unsigned, **must not contain `publisherName`** —
+  electron-updater would reject every update as untrusted.
 
 Then smoke-test the installer itself. Run it, and confirm:
 
@@ -78,30 +82,24 @@ Then smoke-test the installer itself. Run it, and confirm:
 ## 4. Publish
 
 Upload to the **same tag** as the macOS release for that version, so one release
-carries both platforms.
+carries both platforms. Ensure `$REPO` targets your fork repository:
 
 ```powershell
+$REPO = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "AneekRahman/OpenMausBot" }
 Copy-Item release/OpenMausBot-<version>-setup.exe release/OpenMausBot-setup.exe
-gh release upload v<version> --repo milind-soni/OpenMausBot `
+gh release upload v<version> --repo $REPO `
   release/OpenMausBot-<version>-setup.exe `
   release/OpenMausBot-setup.exe `
   release/OpenMausBot-<version>-setup.exe.blockmap `
   release/latest.yml
 ```
 
-Prefer the repository's **Release** workflow, which builds all platforms from
-one pinned commit and mirrors the complete, byte-identical asset set safely.
-If this emergency manual path is used, the same four files must also be attached
-to the matching draft in `milind-soni/openmausbot-releases`; never replace the
-bytes of an already-published asset.
-
 Both names are required, for different consumers:
 
 - **`OpenMausBot-<version>-setup.exe`** is what `latest.yml` references by name and
   sha512. The auto-updater downloads exactly this.
-- **`OpenMausBot-setup.exe`** is a byte-identical copy that gives the README's
-  `/releases/latest/download/OpenMausBot-setup.exe` button a stable URL. This
-  mirrors `OpenMausBot.dmg` sitting beside `OpenMausBot-<version>.dmg`.
+- **`OpenMausBot-setup.exe`** is a byte-identical copy that gives a stable URL
+  for release links.
 
 ### latest.yml is not optional
 

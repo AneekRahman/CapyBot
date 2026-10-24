@@ -16,28 +16,17 @@ Talk to them like contacts. Watch them work. Approve what matters.
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![Electron](https://img.shields.io/badge/Electron-macOS%20%C2%B7%20Windows%20%C2%B7%20Ubuntu-2B2E3A?logo=electron&logoColor=9FEAF9)
 ![Agents](https://img.shields.io/badge/agents-Claude%20·%20Codex-d97757)
-[![Release](https://img.shields.io/github/v/release/milind-soni/OpenMausBot?label=release&color=1084fe&cacheSeconds=300)](https://github.com/milind-soni/OpenMausBot/releases/latest)
+[![Fork](https://img.shields.io/badge/fork-AneekRahman%2FOpenMausBot-blue)](https://github.com/AneekRahman/OpenMausBot)
+[![Upstream Release](https://img.shields.io/github/v/release/milind-soni/OpenMausBot?label=upstream%20release&color=1084fe&cacheSeconds=300)](https://github.com/milind-soni/OpenMausBot/releases/latest)
 ![PRs](https://img.shields.io/badge/PRs-welcome-38d591)
 
 <br>
 
-<a href="https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot.dmg">
-  <img src="https://img.shields.io/github/v/release/milind-soni/OpenMausBot?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Mac%20%28Apple%20silicon%29&labelColor=070707&color=1084fe&cacheSeconds=300" alt="Download the latest OpenMausBot for Mac with Apple silicon (.dmg)" height="40">
-</a>
-&nbsp;
-<a href="https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-intel.dmg">
-  <img src="https://img.shields.io/github/v/release/milind-soni/OpenMausBot?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Mac%20%28Intel%29&labelColor=070707&color=2a9d8f&cacheSeconds=300" alt="Download the latest OpenMausBot for Intel Macs (.dmg)" height="40">
-</a>
-&nbsp;
-<a href="https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-setup.exe">
-  <img src="https://img.shields.io/github/v/release/milind-soni/OpenMausBot?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Windows&labelColor=070707&color=4cc2ff&cacheSeconds=300" alt="Download the latest OpenMausBot for Windows (.exe)" height="40">
-</a>
-&nbsp;
-<a href="https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-amd64.deb">
-  <img src="https://img.shields.io/github/v/release/milind-soni/OpenMausBot?style=for-the-badge&label=%E2%AC%87%EF%B8%8F%20%20Download%20for%20Ubuntu&labelColor=070707&color=e95420&cacheSeconds=300" alt="Download the latest OpenMausBot for Ubuntu (.deb)" height="40">
-</a>
-
-<sub>[latest release](https://github.com/milind-soni/OpenMausBot/releases/latest) &nbsp;·&nbsp; macOS: Apple silicon & Intel · signed & notarized .dmg &nbsp;·&nbsp; Windows: x64 installer &nbsp;·&nbsp; Ubuntu 24.04 x64: .deb or AppImage beta &nbsp;·&nbsp; [all releases](https://github.com/milind-soni/OpenMausBot/releases)</sub>
+<p>
+<b>Personal Public Fork</b> &nbsp;·&nbsp; <a href="https://github.com/AneekRahman/OpenMausBot">github.com/AneekRahman/OpenMausBot</a><br>
+<sub>This fork publishes no pre-compiled binaries; see <a href="#quick-start">Quick start</a> to run from source.<br>
+Official upstream binary downloads: <a href="https://github.com/milind-soni/OpenMausBot/releases">milind-soni/OpenMausBot releases</a>.</sub>
+</p>
 
 <br>
 
@@ -65,6 +54,20 @@ Talk to them like contacts. Watch them work. Approve what matters.
 </div>
 
 ---
+
+> [!NOTE]
+> **About this fork:**
+> This repository is a sanitized, pure open-source personal fork (<https://github.com/AneekRahman/OpenMausBot>) of the upstream [OpenMausBot project](https://github.com/milind-soni/OpenMausBot) by Milind Soni and contributors.
+>
+> **Key fork enhancements:**
+> - **Multi-Account Gemini Antigravity Support:** Unified account rail, browser-based sign-in flow, and direct account removal.
+> - **Dynamic Usage & Quota Meters:** Live sidebar usage meters and quota reset countdowns for Gemini Antigravity plans.
+> - **Enhanced Voice & Dictation:** Take-turns composer speech-to-text dictation lifecycle, server STT pipeline, and dynamic Web Speech fallback.
+> - **Local VM Improvements:** Dynamic ephemeral port allocation and self-healing auto-recovery for Podman/Docker containers.
+> - **Curated Theme Suite:** Expanded skins including Pop variations, community skins, and avant-garde themes.
+> - **Pure Open Source (OSS):** Excludes upstream enterprise and private deployment modules; standalone local operation runs purely under Apache 2.0.
+>
+> **Build from Source:** This personal fork does not publish pre-compiled binaries or auto-update feeds. Please follow the [source build instructions](#quick-start) below. Official upstream binaries remain available at [upstream releases](https://github.com/milind-soni/OpenMausBot/releases).
 
 > ⚠️ **No affiliation with any cryptocurrency.** OpenMausBot has no token. Any coin using the OpenMausBot, Maus, or SupaMaus name is not created, endorsed, or affiliated with this project or its maintainer. I have received no tokens, payment, or allocation from anyone, and I will not be endorsing any token.
 
@@ -327,23 +330,10 @@ See [Run OpenMausBot from scripts and CI](docs/headless-cli.md).
 
 ## Quick start
 
-**Released builds ([latest release](https://github.com/milind-soni/OpenMausBot/releases/latest)):** the harness server is embedded, so no separate server setup is required.
-
-| | Download | Install |
-|---|---|---|
-| **macOS** (Apple silicon) | [OpenMausBot.dmg](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot.dmg) | Drag it to Applications, open it. Signed & notarized. |
-| **macOS** (Intel) | [OpenMausBot-intel.dmg](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-intel.dmg) | Same app, built for Intel Macs. Signed & notarized. |
-| **Windows** (x64) | [OpenMausBot-setup.exe](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-setup.exe) | Run it — one-click, per-user, no admin rights. The installer isn't code-signed yet, so SmartScreen shows "unknown publisher": **More info → Run anyway**. |
-| **Ubuntu 24.04** (x64) | [OpenMausBot-amd64.deb](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-amd64.deb) · [OpenMausBot.AppImage](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot.AppImage) | Install the `.deb` with APT (recommended), or make the AppImage executable and run it. Beta; GNOME is the supported desktop. |
-
-See the [Ubuntu Desktop guide](docs/linux-desktop.md) for installation, capabilities, and troubleshooting.
-Any desktop build can also pair as a client to another Windows, macOS, or Ubuntu host over Tailscale; see [desktop-to-desktop companion mode](docs/desktop-companion.md).
-
-
-**From source:**
+### From source (recommended for this fork)
 
 ```sh
-git clone https://github.com/milind-soni/OpenMausBot && cd OpenMausBot
+git clone https://github.com/AneekRahman/OpenMausBot && cd OpenMausBot
 pnpm install
 
 pnpm dev:server    # harness server → 127.0.0.1:8799
@@ -355,13 +345,27 @@ Requirements: **macOS, Windows, or Ubuntu 24.04 x64**, **Node 24+**, **pnpm**, a
 [`codex`](https://github.com/openai/codex), or [`grok`](https://x.ai/cli) — installed and logged in. They appear
 in the model picker automatically.
 
-Package the desktop application:
+Package the desktop application locally:
 
 ```sh
 pnpm package:mac      # macOS: DMG + ZIP; requires Swift/Xcode tools
 pnpm package:win      # Windows: installer + ZIP
 pnpm package:linux    # Ubuntu x64: .deb + AppImage + verified CUA runtime
 ```
+
+### Official upstream binary releases
+
+Official pre-built and signed desktop binaries are published upstream at [milind-soni/OpenMausBot releases](https://github.com/milind-soni/OpenMausBot/releases/latest) (this fork does not distribute binaries):
+
+| Platform | Upstream Download | Install |
+|---|---|---|
+| **macOS** (Apple silicon) | [OpenMausBot.dmg](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot.dmg) | Drag it to Applications, open it. Signed & notarized. |
+| **macOS** (Intel) | [OpenMausBot-intel.dmg](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-intel.dmg) | Same app, built for Intel Macs. Signed & notarized. |
+| **Windows** (x64) | [OpenMausBot-setup.exe](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-setup.exe) | Run it — one-click, per-user, no admin rights. |
+| **Ubuntu 24.04** (x64) | [OpenMausBot-amd64.deb](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot-amd64.deb) · [OpenMausBot.AppImage](https://github.com/milind-soni/OpenMausBot/releases/latest/download/OpenMausBot.AppImage) | Install the `.deb` with APT (recommended), or make the AppImage executable and run it. Beta; GNOME is the supported desktop. |
+
+See the [Ubuntu Desktop guide](docs/linux-desktop.md) for installation, capabilities, and troubleshooting.
+Any desktop build can also pair as a client to another Windows, macOS, or Ubuntu host over Tailscale; see [desktop-to-desktop companion mode](docs/desktop-companion.md).
 
 ### Desktop capability status
 
@@ -462,16 +466,16 @@ see [Other model providers](apps/docs/content/docs/providers/model-providers.mdx
 
 ## Privacy
 
-Usage analytics are optional and anonymous: product events and a once-a-day count of what is set up, never keys,
-names, addresses or conversations. Turn them off in Settings → General → Usage analytics;
-[`docs/analytics.md`](docs/analytics.md) lists every event and property.
+Usage analytics and telemetry are disabled by default. If enabled in Settings → General → Usage analytics,
+events are anonymous: product events and a once-a-day count of what is set up, never keys,
+names, addresses or conversations. [`docs/analytics.md`](docs/analytics.md) lists every event and property.
 
 ## Support the project
 
 OpenMausBot is free and open source. If it does real work for you, you can
-[support its development through GitHub Sponsors](https://github.com/sponsors/milind-soni)
-with a one-time contribution or a monthly sponsorship. Your support helps fund ongoing development
-and maintenance; OpenMausBot remains free and open source.
+[support upstream development through GitHub Sponsors](https://github.com/sponsors/milind-soni)
+with a one-time contribution or a monthly sponsorship to Milind Soni. Your support helps fund ongoing development
+and maintenance of the upstream project; OpenMausBot remains free and open source.
 
 ## Run from a terminal or on a server
 
@@ -518,11 +522,11 @@ AI-provider sign-in. Devices pair once with a short code. The deployment guide i
 
 ## License
 
-[Apache License 2.0](LICENSE) © 2026 Milind Soni and OpenMausBot contributors,
-except `enterprise/`, which is source-available under its
-[own license](enterprise/LICENSE); delete that folder and what remains is the
-open-source edition. Details, including how contributions are signed off, are
-in [LICENSING.md](LICENSING.md).
+The current tracked tree in this repository is the open-source edition of OpenMausBot, licensed under the
+[Apache License 2.0](LICENSE) © 2026 Milind Soni and OpenMausBot contributors. Historical upstream enterprise
+code in git ancestry remains under its original upstream license terms. In this fork, the optional `enterprise/`
+directory is omitted from the active tree; as designed upstream, without that directory the server reports
+`{"edition":"oss"}`. Details are in [LICENSING.md](LICENSING.md).
 
 Packaged Cua Driver components retain their upstream MIT, SIL OFL 1.1, MPL-2.0, and other dependency terms;
 the corresponding notices, license texts, source locations, and SBOM are in
@@ -530,4 +534,6 @@ the corresponding notices, license texts, source locations, and SBOM are in
 
 OpenMausBot is an independent, open-source project inspired by Grok Bot. It is
 not affiliated with, endorsed by, or associated with xAI; "Grok" is a trademark
-of its respective owner.
+of its respective owner. The OpenMausBot and MausBot names and the mascot are
+trademarks of Supamaus Software Private Limited; this fork does not claim or grant
+trademark rights.

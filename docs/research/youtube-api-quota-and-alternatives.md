@@ -511,7 +511,7 @@ Add the server to OpenMausBot's custom MCP configuration (`~/.openmausbot/config
       "env": {
         "YOUTUBE_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
         "YOUTUBE_CLIENT_SECRET": "your-client-secret",
-        "YOUTUBE_TOKEN_PATH": "/Users/user/.openmausbot/youtube-token.json"
+        "YOUTUBE_TOKEN_PATH": "/path/to/.openmausbot/youtube-token.json"
       }
     }
   }

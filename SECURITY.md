@@ -2,14 +2,16 @@
 
 ## Reporting a vulnerability
 
-Please **do not open a public issue** for security problems.
+Please **do not open a public issue** with sensitive security vulnerability details.
 
-- **Email** **soni.mil2001@gmail.com** with the details.
-- **Or, if it is enabled on this repository,** use GitHub's private vulnerability reporting:
-  <https://github.com/milind-soni/OpenMausBot/security/advisories/new>. The report stays visible
-  only to you and the maintainers until a fix is published.
+- **If private vulnerability reporting is enabled on this repository,** use GitHub's private vulnerability reporting:
+  <https://github.com/AneekRahman/OpenMausBot/security/advisories/new>. The report stays visible
+  only to you and the maintainer until a fix is published.
+- **If private vulnerability reporting is unavailable,** open a public issue requesting a private contact channel without including vulnerability details.
+- For vulnerabilities affecting upstream OpenMausBot, report them upstream at
+  <https://github.com/milind-soni/OpenMausBot/security/advisories/new>.
 
-You'll get a response as soon as possible, normally within a few days.
+You will receive a response as soon as possible.
 
 ## Scope notes for researchers
 

@@ -25,3 +25,10 @@ name, a type, an extracted function, one shared helper. A rule ("never X",
 rule that guards correctness; fix the code.
 
 More specific `AGENTS.md` files override this note within their directories.
+
+## Plans and changes
+
+Every non-trivial change gets a plan in `plans/` before it is
+implemented — see [`plans/README.md`](plans/README.md) — and its Status,
+ship commit, and verification evidence go into that plan, not into code
+comments or commit messages alone.

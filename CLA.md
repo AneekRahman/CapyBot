@@ -1,5 +1,15 @@
 # OpenMausBot Contributor License Agreement
 
+> **Notice for this fork:**
+> This personal public fork (<https://github.com/AneekRahman/OpenMausBot>) contains the open-source
+> edition of OpenMausBot without the optional upstream `enterprise/` directory. All contributions to
+> this repository are submitted under the [Apache License 2.0](LICENSE) without requiring a CLA or
+> DCO sign-off (see [LICENSING.md](LICENSING.md)).
+>
+> The agreement below is the historical upstream legal instrument preserved verbatim for reference.
+
+---
+
 This agreement covers contributions to the `enterprise/` directory of the
 OpenMausBot repository, which is licensed under the OpenMausBot Enterprise
 License rather than Apache 2.0. Contributions anywhere else do not require
