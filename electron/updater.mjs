@@ -79,7 +79,11 @@ export function attachUpdaterWindow(mainWindow) {
   win = mainWindow;
 }
 
-export function startUpdater() {
+export function autoUpdateEnabled() {
+  return process.env.OMB_AUTO_UPDATE === "1" || process.env.OMB_ENABLE_UPDATER === "1";
+}
+
+export function startUpdater({ autoCheck = autoUpdateEnabled() } = {}) {
   if (!app.isPackaged) {
     updaterCoordinator = null;
     setState({ status: "idle" });
@@ -107,6 +111,8 @@ export function startUpdater() {
     nativeStaging: process.platform === "darwin",
   });
 
-  setTimeout(() => void updaterCoordinator?.check(), 15_000).unref?.();
-  setInterval(() => void updaterCoordinator?.check(), 60 * 60 * 1000).unref?.();
+  if (autoCheck) {
+    setTimeout(() => void updaterCoordinator?.check(), 15_000).unref?.();
+    setInterval(() => void updaterCoordinator?.check(), 60 * 60 * 1000).unref?.();
+  }
 }

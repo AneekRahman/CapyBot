@@ -116,10 +116,13 @@ const settle = async () => {
 };
 
 beforeEach(() => {
+  process.env.OMB_AUTO_UPDATE = "1";
   localOriginModule.setLocalOrigin(LOCAL);
   vi.useFakeTimers();
 });
 afterEach(() => {
+  delete process.env.OMB_AUTO_UPDATE;
+  delete process.env.OMB_ENABLE_UPDATER;
   vi.clearAllTimers();
   vi.useRealTimers();
 });
@@ -358,4 +361,22 @@ it("sends updater progress to a reopened window without restarting the updater",
     .toEqual(["checking", "downloading", "downloading", ...(process.platform === "darwin" ? ["preparing"] : []), "downloaded"]);
   expect(autoUpdater.eventNames().reduce((count, name) => count + autoUpdater.listenerCount(name), 0)).toBe(listenerCount);
   expect(vi.getTimerCount()).toBe(timerCount);
+});
+
+it("stays idle by default at startup boundary without scheduling checks unless enabled", async () => {
+  delete process.env.OMB_AUTO_UPDATE;
+  delete process.env.OMB_ENABLE_UPDATER;
+  const rule = mainRule();
+  const local = page(LOCAL);
+  rule.show(local);
+  const { updater, autoUpdater } = await load(rule.pageAllowed);
+  updater.attachUpdaterWindow(rule.window);
+  updater.startUpdater();
+
+  await vi.advanceTimersByTimeAsync(15_000);
+  await settle();
+
+  expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+  expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
 });

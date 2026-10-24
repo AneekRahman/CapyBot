@@ -4,7 +4,7 @@
 //
 //   pnpm build:server && pnpm exec vite build && node scripts/build-npm-package.mjs
 //   cd release/npm && npm pack        # or npm publish --access public
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,19 +21,12 @@ for (const required of ["dist-server/index.js", "dist-server/openmausbot.js", "d
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
-cpSync(join(root, "dist-server"), join(out, "dist-server"), { recursive: true });
+cpSync(join(root, "dist-server"), join(out, "dist-server"), {
+  recursive: true,
+  filter: (source) => source !== join(root, "dist-server", "enterprise"),
+});
 cpSync(join(root, "dist"), join(out, "dist"), { recursive: true });
 if (existsSync(join(root, "skills"))) cpSync(join(root, "skills"), join(out, "skills"), { recursive: true });
-// The enterprise layer, under the path the server loads it from.
-// Source-available under its own license; inert without OMB_LICENSE_KEY.
-const enterpriseBundle = join(root, "dist-server", "enterprise", "server", "index.js");
-if (existsSync(enterpriseBundle)) {
-  mkdirSync(join(out, "enterprise", "server"), { recursive: true });
-  copyFileSync(enterpriseBundle, join(out, "enterprise", "server", "index.js"));
-  for (const file of ["LICENSE", "README.md"]) {
-    if (existsSync(join(root, "enterprise", file))) copyFileSync(join(root, "enterprise", file), join(out, "enterprise", file));
-  }
-}
 cpSync(join(root, "LICENSE"), join(out, "LICENSE"));
 
 // The bin lives next to the bundle so serverEntry() finds index.js by path.
@@ -56,10 +49,10 @@ writeFileSync(
         "@duckdb/node-api": app.dependencies["@duckdb/node-api"],
         "@resvg/resvg-js": app.dependencies["@resvg/resvg-js"],
       },
-      files: ["cli.js", "dist-server", "dist", "skills", "enterprise", "LICENSE", "README.md"],
+      files: ["cli.js", "dist-server", "dist", "skills", "LICENSE", "README.md"],
       engines: { node: ">=24" },
-      repository: { type: "git", url: "https://github.com/milind-soni/OpenMausBot.git" },
-      homepage: "https://github.com/milind-soni/OpenMausBot#readme",
+      repository: { type: "git", url: "https://github.com/AneekRahman/OpenMausBot.git" },
+      homepage: "https://github.com/AneekRahman/OpenMausBot#readme",
       keywords: ["openmausbot", "agents", "self-hosted", "server"],
     },
     null,
@@ -156,9 +149,9 @@ openmausbot run "Room Lead" "Rehearse the launch of https://example.com" --expor
 openmausbot help run       # every verb: doctor, run, wait, send, export, events, team, engine, connect, mcp
 \`\`\`
 
-[Setup guide](https://github.com/milind-soni/OpenMausBot/blob/main/docs/cli-onboarding.md)
-· [Scripts and CI](https://github.com/milind-soni/OpenMausBot/blob/main/docs/headless-cli.md)
-· [Hosting guide](https://github.com/milind-soni/OpenMausBot/blob/main/docs/self-hosting.md)
+[Setup guide](https://github.com/AneekRahman/OpenMausBot/blob/main/docs/cli-onboarding.md)
+· [Scripts and CI](https://github.com/AneekRahman/OpenMausBot/blob/main/docs/headless-cli.md)
+· [Hosting guide](https://github.com/AneekRahman/OpenMausBot/blob/main/docs/self-hosting.md)
 `,
 );
 console.log(`npm package assembled at ${out} (openmausbot@${app.version})`);

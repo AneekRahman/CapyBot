@@ -4,7 +4,21 @@ import type { CaptureResult, PostHog } from "posthog-js";
 import { DESKTOP_PORTS } from "../../electron/desktop-ports.mjs";
 import { appVersion } from "@/lib/app-links";
 
-const TOKEN = "phc_m2hP39w8y2gLPvHgDvSXAu6xcZ3agjf4ruL56rGcMZEe";
+export function posthogToken(): string {
+  const token =
+    (typeof import.meta !== "undefined" && (import.meta.env?.VITE_POSTHOG_TOKEN || import.meta.env?.VITE_POSTHOG_KEY)) ||
+    (typeof process !== "undefined" && (process.env?.VITE_POSTHOG_TOKEN || process.env?.VITE_POSTHOG_KEY)) ||
+    "";
+  return typeof token === "string" ? token.trim() : "";
+}
+
+export function posthogHost(): string {
+  const host =
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_POSTHOG_HOST) ||
+    (typeof process !== "undefined" && process.env?.VITE_POSTHOG_HOST) ||
+    "https://us.i.posthog.com";
+  return typeof host === "string" ? host.trim() : "https://us.i.posthog.com";
+}
 
 // Read before init(): an opted-out install must never call posthog.init(), so no request leaves the machine.
 const OPT_OUT_KEY = "omb-analytics-opt-out";
@@ -78,9 +92,10 @@ function keepStoredOptOut() {
 
 export function initAnalytics(): Promise<void> {
   keepStoredOptOut();
-  if (client || !analyticsEnabled()) return Promise.resolve();
+  const token = posthogToken();
+  if (!token || client || !analyticsEnabled()) return Promise.resolve();
   loading ??= import("posthog-js")
-    .then(({ default: posthog }) => start(posthog))
+    .then(({ default: posthog }) => start(posthog, token))
     .catch(() => {
       pending = [];
     })
@@ -90,13 +105,13 @@ export function initAnalytics(): Promise<void> {
   return loading;
 }
 
-function start(posthog: PostHog) {
-  if (!analyticsEnabled()) {
+function start(posthog: PostHog, token = posthogToken()) {
+  if (!token || !analyticsEnabled()) {
     pending = [];
     return;
   }
-  posthog.init(TOKEN, {
-    api_host: "https://us.i.posthog.com",
+  posthog.init(token, {
+    api_host: posthogHost(),
     autocapture: false, // never capture clicked-element text (conversation leak)
     capture_pageview: false,
     person_profiles: "identified_only",
@@ -155,7 +170,7 @@ function claimActiveDay(day: string): boolean {
 }
 
 function sendAppActive() {
-  if (!client || !analyticsEnabled() || globalThis.document?.visibilityState !== "visible") return;
+  if (!posthogToken() || !client || !analyticsEnabled() || globalThis.document?.visibilityState !== "visible") return;
   if (claimActiveDay(localDay())) client.capture("app_active", { platform: pagePlatform() });
 }
 
@@ -199,7 +214,7 @@ export function analyticsSurface(): "local" | "server" {
 }
 
 function whenReady(call: (ph: PostHog) => void) {
-  if (!analyticsEnabled()) return;
+  if (!posthogToken() || !analyticsEnabled()) return;
   if (client) call(client);
   else if (loading) pending.push(call);
 }

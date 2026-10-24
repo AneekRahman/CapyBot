@@ -62,6 +62,7 @@ const baseStorage = {
 vi.stubGlobal("localStorage", baseStorage);
 
 beforeEach(() => {
+  process.env.VITE_POSTHOG_TOKEN = "phc_test_token";
   store.clear();
   ph.loads = 0;
   ph.fail = false;
@@ -75,7 +76,12 @@ beforeEach(() => {
   ph.optIns = [];
 });
 // Restored in afterEach: an inline restore would be skipped when an assertion fails mid-test.
-afterEach(() => vi.stubGlobal("localStorage", baseStorage));
+afterEach(() => {
+  delete process.env.VITE_POSTHOG_TOKEN;
+  delete process.env.VITE_POSTHOG_KEY;
+  delete process.env.VITE_POSTHOG_HOST;
+  vi.stubGlobal("localStorage", baseStorage);
+});
 
 // resetModules keeps the mocked posthog-js cached, so it is registered again and `loads` counts this graph only.
 async function freshAnalytics() {
@@ -101,6 +107,23 @@ describe("optAction", () => {
 
   it("does nothing when there is no client to stop", () => {
     expect(optAction(false, false)).toBe("none");
+  });
+});
+
+describe("when PostHog token is unset (default in public fork)", () => {
+  it("does not load posthog-js or send events", async () => {
+    delete process.env.VITE_POSTHOG_TOKEN;
+    delete process.env.VITE_POSTHOG_KEY;
+    const fresh = await freshAnalytics();
+
+    expect(fresh.posthogToken()).toBe("");
+    await fresh.initAnalytics();
+    fresh.track("app_opened");
+    fresh.identifyEmail("person@example.com");
+
+    expect(ph.loads).toBe(0);
+    expect(ph.calls).toEqual([]);
+    expect(store.get("omb-installed")).toBeUndefined();
   });
 });
 

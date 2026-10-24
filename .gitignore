@@ -39,10 +39,26 @@ cloudflare/control-plane/worker-configuration.d.ts
 # read and write, .tmpexp is throwaway local scripts.
 .agents/
 .tmpexp/
+.scratch/
+scratch/
+*.scratch
+.omb-scratch/
+tmp/
+.tmp/
 
-# per-tenant deploy settings (see deploy/.env.example)
+# Environment files and secrets
+.env
+.env.*
+**/.env
+**/.env.*
+local.env
+local.env.*
+*.local.env
+**/*.local.env
+**/.env.local
+**/.env.*.local
 deploy/.env
 deploy/podman/.env
 deploy/podman/.env.*
-!deploy/podman/.env.example
-/.env
+!**/.env.example
+!**/*.env.example

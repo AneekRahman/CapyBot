@@ -5,6 +5,7 @@ import { gunzipSync } from "node:zlib";
 import { expect, it, vi } from "vitest";
 
 const TOKEN = "phc_m2hP39w8y2gLPvHgDvSXAu6xcZ3agjf4ruL56rGcMZEe";
+process.env.VITE_POSTHOG_TOKEN = TOKEN;
 const STORED = `ph_${TOKEN}_posthog`;
 const FIRST_PAGE = "https://first-tenant.mausbot.cloud/rooms/FIRST-ROOM?share-computer=FIRST-COMPUTER&utm_source=first-campaign";
 const REFERRER = "https://referrer.example/search?q=SECRET-REFERRER";
