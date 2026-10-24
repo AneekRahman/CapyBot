@@ -86,6 +86,11 @@ type AcpAskFinish = (
   always?: boolean,
 ) => RequestOutcome;
 
+interface StoredToolCall {
+  title?: string;
+  rawInput?: unknown;
+}
+
 interface AcpTurn {
   turnId: string;
   turn: SendTurnInput;
@@ -101,6 +106,7 @@ interface AcpTurn {
   asks: Map<string, AcpAskFinish>;
   /** Tool calls started and not yet finished: a tool such as `sleep` sends nothing while it runs. */
   runningTools: Set<string>;
+  toolCalls: Map<string, StoredToolCall>;
   unkeyedToolIds: string[];
   interruptTimer: ReturnType<typeof setTimeout> | null;
   stopQuietWatch: (() => void) | null;
@@ -334,6 +340,26 @@ function nextUnkeyedToolId(current: AcpTurn): string {
   const id = `acp-tool-unkeyed-${++unkeyedToolSeq}`;
   current.unkeyedToolIds.push(id);
   return id;
+}
+
+export function annotateMismatchedToolError(
+  stored: StoredToolCall | undefined,
+  output: string,
+): string {
+  if (!stored || output.startsWith("[Engine Mismatch:")) return output;
+  const match = output.match(/Access to path\s+["']([^"']+)["']\s+is denied/i);
+  if (!match) return output;
+  const deniedPath = match[1]?.trim();
+  if (!deniedPath) return output;
+
+  const inputJson = stored.rawInput !== undefined ? JSON.stringify(stored.rawInput) : "";
+  const title = stored.title ?? "";
+
+  if (inputJson.includes(deniedPath) || title.includes(deniedPath)) {
+    return output;
+  }
+
+  return `[Engine Mismatch: Denied path "${deniedPath}" is not referenced in this tool's input arguments. This error was likely retroactively attributed from a subsequent step.]\n\n${output}`;
 }
 const CLIENT_FILE_MAX_BYTES = 8 * 1024 * 1024;
 
@@ -1030,11 +1056,13 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
             case "tool_call": {
               current.flushAssistantText();
               trackRunningTool(current, u, "pending");
+              const itemId = (typeof u.toolCallId === "string" && u.toolCallId) ? u.toolCallId : nextUnkeyedToolId(current);
+              if (itemId) current.toolCalls.set(itemId, { title: u.title, rawInput: u.rawInput });
               emit({
                 ...base(threadId, current.turnId),
                 type: "item.started",
                 itemType: "tool",
-                itemId: (typeof u.toolCallId === "string" && u.toolCallId) ? u.toolCallId : nextUnkeyedToolId(current),
+                itemId,
                 title: String(u.rawInput?.command ?? u.title ?? "tool").slice(0, 80),
                 summary: commandSummary(u.rawInput),
                 input: toolDetailPreview(u.rawInput),
@@ -1045,13 +1073,20 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
               trackRunningTool(current, u);
               if (u.status === "completed" || u.status === "failed") {
                 current.state.producedItem = true;
+                const itemId = (typeof u.toolCallId === "string" && u.toolCallId) ? u.toolCallId : current.unkeyedToolIds.shift();
+                const stored = itemId ? current.toolCalls.get(itemId) : undefined;
+                if (itemId) current.toolCalls.delete(itemId);
+                let output = toolDetailPreview(u.rawOutput ?? u.content);
+                if (u.status === "failed" && output) {
+                  output = annotateMismatchedToolError(stored ?? (u.rawInput ? { rawInput: u.rawInput, title: u.title } : undefined), output);
+                }
                 emit({
                   ...base(threadId, current.turnId),
                   type: "item.completed",
                   itemType: "tool",
-                  itemId: (typeof u.toolCallId === "string" && u.toolCallId) ? u.toolCallId : current.unkeyedToolIds.shift(),
+                  itemId,
                   ok: u.status !== "failed",
-                  output: toolDetailPreview(u.rawOutput ?? u.content),
+                  output,
                 });
                 for (const img of extractMcpImages(u.content ?? u.rawOutput)) {
                   emit({ ...base(threadId, current.turnId), type: "item.completed", itemType: "assistant_image", data: img.data });
@@ -1315,6 +1350,7 @@ export function createAcpDriver(support: AcpSupport): ProviderDriver<AcpConfig> 
           acknowledge,
           asks,
           runningTools: new Set(),
+          toolCalls: new Map(),
           unkeyedToolIds: [],
           interruptTimer: null,
           stopQuietWatch: null,

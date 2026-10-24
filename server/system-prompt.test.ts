@@ -357,10 +357,14 @@ describe("longCommandsPrompt", () => {
     for (const kind of [null, "local", "vps", "box"] as const) {
       const text = longCommandsPrompt(kind);
       expect(text).toContain("`timeout` in milliseconds, up to 600000");
+      expect(text).toContain("nohup <command> > .<job>.log");
+      expect(text).toContain("never use /tmp");
+      expect(text).not.toContain("/tmp/");
       expect(text).not.toContain("vm_exec");
     }
     for (const kind of ["vm-private", "vm-shared"] as const) {
       expect(longCommandsPrompt(kind)).toContain("vm_exec takes `timeout_seconds` instead (default 60, at most 300)");
+      expect(longCommandsPrompt(kind)).toContain("never use /tmp");
     }
   });
 });
